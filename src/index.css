@@ -1,13 +1,48 @@
 @import "tailwindcss";
 
+/* ───────────────────────────────────────────────
+   DESIGN TOKENS  —  Dhaka Pharma POS Theme
+   All pharma brand colors, payment-provider
+   colors, and font stacks live here.
+   ─────────────────────────────────────────────── */
 @theme {
+  /* ── Pharma Brand Palette (teal family) ── */
+  --color-pharma-50:  #f0fdf9;
+  --color-pharma-100: #ccfbf1;
+  --color-pharma-200: #99f6e4;
+  --color-pharma-300: #5eead4;
+  --color-pharma-400: #2dd4bf;
+  --color-pharma-500: #14b8a6;
+  --color-pharma-600: #0d9488;
   --color-pharma-700: #0f766e;
   --color-pharma-800: #115e59;
   --color-pharma-900: #134e4a;
+  --color-pharma-950: #042f2e;
+  --color-pharma-dark: #064e3b;
+
+  /* ── Payment Provider Colors ── */
+  --color-bkash: #E2136E;
+  --color-nagad: #E34E26;
+
+  /* ── Font Families ── */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 }
 
+/* ───────────────────────────────────────────────
+   BASE STYLES
+   ─────────────────────────────────────────────── */
 body {
   margin: 0;
-  background-color: #f1f5f9;
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #f1f5f9;            /* slate-100 */
+  color: #0f172a;                       /* slate-900 */
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* ── Compact Scrollbar (Webkit) ── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: #f1f5f9; }
+::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
