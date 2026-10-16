@@ -1,10 +1,43 @@
 ﻿import { useState } from 'react'
 import TicketCard from './TicketCard'
 
+/**
+ * Senior Skeleton Component: Prevents layout shift (CLS) while loading
+ */
+function TicketCardSkeleton() {
+  return (
+    <div className="bg-white border border-slate-200 rounded p-3 relative shadow-2xs animate-pulse">
+      {/* Top Header Placeholder */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-16 h-5 bg-slate-200 rounded"></div>
+          <div className="w-24 h-5 bg-slate-200 rounded"></div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-14 h-4 bg-slate-200 rounded"></div>
+          <div className="w-16 h-5 bg-slate-200 rounded font-bold"></div>
+        </div>
+      </div>
+
+      {/* Details Placeholder */}
+      <div className="grid grid-cols-12 gap-2 mt-2 pt-2 border-t border-slate-100">
+        <div className="col-span-7 space-y-1.5">
+          <div className="w-20 h-3 bg-slate-200 rounded"></div>
+          <div className="w-36 h-4 bg-slate-200 rounded font-bold"></div>
+          <div className="w-48 h-3 bg-slate-200 rounded"></div>
+        </div>
+        <div className="col-span-5 flex flex-col justify-end items-end">
+          <div className="w-24 h-7 bg-slate-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TicketQueue({
   tickets = [],
   loading = false,
-  selectedTicketId = 'TK-1082',
+  selectedTicketId = null,
   onSelectTicket,
   onRefreshTickets,
 }) {
@@ -25,8 +58,8 @@ function TicketQueue({
     const query = searchTerm.toLowerCase().trim()
     const matchesSearch =
       query === '' ||
-      t.ticketNumber.toLowerCase().includes(query) ||
-      t.patientName.toLowerCase().includes(query)
+      t.ticketNumber?.toLowerCase().includes(query) ||
+      t.patientName?.toLowerCase().includes(query)
 
     const matchesCategory =
       activeCategory === 'all'
@@ -37,6 +70,11 @@ function TicketQueue({
 
     return matchesSearch && matchesCategory
   })
+
+  const handleResetFilters = () => {
+    setSearchTerm('')
+    setActiveCategory('all')
+  }
 
   return (
     <div className="col-span-12 lg:col-span-7 xl:col-span-7 flex flex-col gap-2.5">
@@ -63,8 +101,9 @@ function TicketQueue({
               <button
                 onClick={onRefreshTickets}
                 className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono text-xs flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                title="Refresh queue from Counter 1"
               >
-                <span className="material-symbols-outlined text-[14px] text-teal-700">sync</span> Refresh [Ctrl+R]
+                <span className={`material-symbols-outlined text-[14px] text-teal-700 ${loading ? 'animate-spin' : ''}`}>sync</span> Refresh [Ctrl+R]
               </button>
             </div>
           </div>
@@ -74,12 +113,22 @@ function TicketQueue({
             <div className="relative flex-1">
               <span className="absolute left-2.5 top-2 text-slate-400 material-symbols-outlined text-[16px]">search</span>
               <input
-                className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-pharma-700 font-sans"
+                className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-pharma-700 font-sans"
                 placeholder="Search Ticket # [F2], Patient Name or Mobile..."
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Clear search"
+                >
+                  <span className="material-symbols-outlined text-[15px]">close</span>
+                </button>
+              )}
             </div>
             <button className="px-3 py-1.5 bg-pharma-50 hover:bg-teal-100 border border-teal-300 rounded text-pharma-800 font-medium text-xs flex items-center gap-1.5 whitespace-nowrap transition-colors">
               <span className="material-symbols-outlined text-[16px] text-pharma-700">qr_code_scanner</span> Scan QR / Token Barcode
@@ -94,7 +143,7 @@ function TicketQueue({
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-2.5 py-1 rounded font-medium whitespace-nowrap transition-colors border ${
+                  className={`px-2.5 py-1 rounded font-medium whitespace-nowrap transition-colors border cursor-pointer ${
                     isActive
                       ? 'bg-pharma-700 text-white border-pharma-700 shadow-xs'
                       : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
@@ -107,19 +156,53 @@ function TicketQueue({
           </div>
         </div>
 
-        {/* Dynamic Ticket Cards List */}
+        {/* Dynamic Ticket Cards List / Senior States */}
         <div className="p-2.5 flex flex-col gap-2 overflow-y-auto max-h-[660px]">
           {loading ? (
-            <div className="p-8 text-center text-slate-400">
-              <span className="material-symbols-outlined text-4xl text-teal-600 animate-spin">sync</span>
-              <p className="text-xs font-mono mt-2">Loading dispensing queue from server...</p>
+            /* 1. Senior Loading State: 3 Skeleton Cards (Zero Layout Shift) */
+            <div className="flex flex-col gap-2 py-1">
+              <TicketCardSkeleton />
+              <TicketCardSkeleton />
+              <TicketCardSkeleton />
+            </div>
+          ) : tickets.length === 0 ? (
+            /* 2. Senior Empty State: Entire Queue is Empty (Store Open / Caught Up) */
+            <div className="p-10 text-center flex flex-col items-center justify-center bg-slate-50/60 rounded border border-dashed border-slate-300 my-4">
+              <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 border border-emerald-200 shadow-2xs">
+                <span className="material-symbols-outlined text-3xl">task_alt</span>
+              </div>
+              <h3 className="font-bold text-slate-800 text-sm">All Caught Up! Queue is Clear</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm leading-relaxed">
+                No pending dispensing tickets from Counter 1. New prescription tickets will appear here automatically via LAN socket.
+              </p>
+              <button
+                type="button"
+                onClick={onRefreshTickets}
+                className="mt-3.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded font-mono text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[15px] text-teal-700">sync</span> Check Counter 1 Sync
+              </button>
             </div>
           ) : filteredTickets.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 bg-slate-50 rounded border border-dashed border-slate-200">
-              <span className="material-symbols-outlined text-4xl text-slate-300">receipt_long</span>
-              <p className="text-xs font-medium text-slate-600 mt-2">No tickets found for this filter or search query.</p>
+            /* 3. Senior Filter Empty State: Search or Category Miss */
+            <div className="p-8 text-center flex flex-col items-center justify-center bg-slate-50/60 rounded border border-dashed border-slate-300 my-3">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2.5">
+                <span className="material-symbols-outlined text-2xl">search_off</span>
+              </div>
+              <h3 className="font-bold text-slate-700 text-sm">No Matching Tickets Found</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                No tickets found for {searchTerm ? <span>query &quot;<strong>{searchTerm}</strong>&quot;</span> : `category "${activeCategory}"`}.
+              </p>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="mt-3 px-3 py-1 bg-pharma-700 hover:bg-pharma-800 text-white rounded text-xs font-semibold shadow-xs cursor-pointer transition-colors"
+              >
+                Clear Search &amp; Filters
+              </button>
             </div>
           ) : (
+            /* 4. Ready State: Render Real Cards */
             filteredTickets.map((ticket) => (
               <TicketCard
                 key={ticket.id}

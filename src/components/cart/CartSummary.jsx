@@ -1,11 +1,13 @@
-function CartSummary({
-  subtotal = 243.00,
+﻿function CartSummary({
+  subtotal = '0.00',
   discountPercent = 5,
   onDiscountChange,
-  discountAmount = 12.15,
-  roundingAmount = 0.15,
-  totalPayable = 231.00,
+  discountAmount = '0.00',
+  roundingAmount = '0.00',
+  totalPayable = '0.00',
 }) {
+  const numRounding = Number(roundingAmount) || 0
+
   return (
     <div className="space-y-2">
       {/* Financial Line Items */}
@@ -23,7 +25,7 @@ function CartSummary({
               <button
                 key={pct}
                 onClick={() => onDiscountChange && onDiscountChange(pct)}
-                className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors ${
+                className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors cursor-pointer ${
                   discountPercent === pct
                     ? 'border-pharma-700 bg-pharma-700 text-white font-bold'
                     : 'border-slate-300 bg-white hover:bg-slate-100 text-slate-700'
@@ -51,9 +53,9 @@ function CartSummary({
 
         {/* Rounding Adjustment */}
         <div className="flex justify-between text-slate-600 text-[11px]">
-          <span>Rounding Adjustment (পয়সা):</span>
+          <span>Rounding Adjustment:</span>
           <span className="font-mono text-slate-500">
-            {roundingAmount >= 0 ? `+৳ ${Number(roundingAmount).toFixed(2)}` : `-৳ ${Math.abs(roundingAmount).toFixed(2)}`}
+            {numRounding >= 0 ? `+৳ ${Math.abs(numRounding).toFixed(2)}` : `-৳ ${Math.abs(numRounding).toFixed(2)}`}
           </span>
         </div>
       </div>
@@ -62,7 +64,7 @@ function CartSummary({
       <div className="flex items-center justify-between bg-pharma-50 p-2.5 rounded border border-teal-300">
         <div>
           <span className="text-xs font-bold text-pharma-900 uppercase tracking-wide block">
-            মোট প্রদেয় / TOTAL PAYABLE
+            সর্বমোট প্রদেয় / TOTAL PAYABLE
           </span>
           <span className="text-[10px] text-teal-700 font-medium">Inclusive of all DGDA pharma taxes</span>
         </div>

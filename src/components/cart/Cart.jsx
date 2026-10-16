@@ -4,6 +4,7 @@ import CartItem from './CartItem'
 import CartSummary from './CartSummary'
 import CashTender from './CashTender'
 import PaymentActions from './PaymentActions'
+import { calculateCartTotals, toPoisha } from '../../utils/money'
 
 /**
  * Calculates adaptive fast cash tender presets based on the current total payable
@@ -60,14 +61,9 @@ function Cart({
     return []
   })
 
-  // 2. Live Dynamic Financial Math
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0)
-  const effectiveDiscountPct = Number(discountPercent) || 0
-  const discountAmount = (subtotal * effectiveDiscountPct) / 100
-  const rawPayable = Math.max(0, subtotal - discountAmount)
-  const totalPayable = Math.round(rawPayable)
-  const roundingAmount = totalPayable - rawPayable
-  const fastCashOptions = calculateFastCash(totalPayable)
+  // 2. Exact Financial Math via Integer Poisha Engine
+  const totals = calculateCartTotals(cartItems, discountPercent)
+  const fastCashOptions = calculateFastCash(totals.totalPayableTaka)
 
   // 3. Quantity & Item Handlers
   const handleIncrement = (id) => {
@@ -212,7 +208,7 @@ function Cart({
                 expiry={item.expiry}
                 qty={item.qty}
                 price={item.price}
-                total={item.price * item.qty}
+                total={(toPoisha(item.price) * item.qty) / 100}
                 onIncrement={() => handleIncrement(item.id)}
                 onDecrement={() => handleDecrement(item.id)}
                 onRemove={() => handleRemove(item.id)}
@@ -225,24 +221,24 @@ function Cart({
         <div className="p-3 bg-slate-50 border-t border-slate-300 flex flex-col gap-2">
           {/* Summary (Subtotal, Discount, VAT, Rounding, Total) */}
           <CartSummary
-            subtotal={subtotal}
+            subtotal={totals.formatted.subtotal}
             discountPercent={discountPercent}
             onDiscountChange={onDiscountChange}
-            discountAmount={discountAmount}
-            roundingAmount={roundingAmount}
-            totalPayable={totalPayable}
+            discountAmount={totals.formatted.discount}
+            roundingAmount={totals.formatted.rounding}
+            totalPayable={totals.formatted.totalPayable}
           />
 
           {/* Cash Tender & Change Calculator */}
           <CashTender
             tenderAmount={tenderAmount}
             onTenderChange={onTenderChange}
-            totalPayable={totalPayable}
+            totalPayable={totals.totalPayableTaka}
             fastCashOptions={fastCashOptions}
           />
 
           {/* Payment Method Selector & Actions */}
-          <PaymentActions totalPayable={totalPayable} />
+          <PaymentActions totalPayable={totals.formatted.totalPayable} />
         </div>
       </div>
     </div>
