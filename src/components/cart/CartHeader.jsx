@@ -1,9 +1,9 @@
-function CartHeader({
-  ticketNumber = '#TK-1082',
-  itemsCount = 3,
-  patientName = 'Mrs. Farhana Yasmin (Walk-in)',
-  doctorName = 'Prof. Dr. M. Rahman (BSMMU)',
-  onClear,
+﻿function CartHeader({
+  ticketNumber = '#TK-0000',
+  itemsCount = 0,
+  patientName = 'Walk-in Customer',
+  doctorName = 'No Prescription Attached',
+  onClearCart,
 }) {
   return (
     <div className="p-3 bg-slate-50 border-b border-slate-300 rounded-t flex flex-col gap-2">
@@ -25,8 +25,8 @@ function CartHeader({
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={onClear}
-            className="text-slate-500 hover:text-rose-600 px-2 py-1 rounded hover:bg-rose-50 text-xs font-medium flex items-center gap-0.5 transition-colors"
+            onClick={onClearCart}
+            className="text-slate-500 hover:text-rose-600 px-2 py-1 rounded hover:bg-rose-50 text-xs font-medium flex items-center gap-0.5 transition-colors cursor-pointer"
             title="Clear Bill"
           >
             <span className="material-symbols-outlined text-[15px]">delete_sweep</span> Clear

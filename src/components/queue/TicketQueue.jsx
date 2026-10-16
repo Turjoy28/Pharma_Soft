@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import TicketCard from './TicketCard'
 
 function TicketQueue({
@@ -6,8 +6,8 @@ function TicketQueue({
   loading = false,
   selectedTicketId = 'TK-1082',
   onSelectTicket,
-  onRefresh,
-}){
+  onRefreshTickets,
+}) {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
 
@@ -19,7 +19,6 @@ function TicketQueue({
     { id: 'cold-chain', label: 'Cold-Chain', count: tickets.filter((t) => t.category === 'cold-chain').length },
     { id: 'held', label: 'Held Tickets', count: tickets.filter((t) => t.category === 'held').length },
   ]
-
 
   // Filtered tickets based on search query and category pill
   const filteredTickets = tickets.filter((t) => {
@@ -50,7 +49,7 @@ function TicketQueue({
               <span className="material-symbols-outlined text-pharma-700 text-[22px]">receipt_long</span>
               <div>
                 <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <span>অপেক্ষারত প্রেসক্রিপশন ও বিল টিকিট / Dispensing Tickets Queue</span>
+                  <span>Dispensing Tickets Queue</span>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span> Live Sync Active
                   </span>
@@ -62,8 +61,8 @@ function TicketQueue({
             </div>
             <div className="flex items-center gap-1.5">
               <button
-                onClick={onRefresh}
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono text-xs flex items-center gap-1 shadow-2xs transition-colors"
+                onClick={onRefreshTickets}
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono text-xs flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[14px] text-teal-700">sync</span> Refresh [Ctrl+R]
               </button>
@@ -126,7 +125,7 @@ function TicketQueue({
                 key={ticket.id}
                 ticket={ticket}
                 isSelected={ticket.id === selectedTicketId}
-                onSelect={onSelectTicket}
+                onSelectTicket={onSelectTicket}
               />
             ))
           )}

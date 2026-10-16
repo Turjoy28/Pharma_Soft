@@ -1,4 +1,4 @@
-function TicketCard({ ticket, isSelected = false, onSelect }) {
+﻿function TicketCard({ ticket, isSelected = false, onSelectTicket }) {
   const {
     id,
     ticketNumber,
@@ -48,7 +48,7 @@ function TicketCard({ ticket, isSelected = false, onSelect }) {
 
   return (
     <div
-      onClick={() => onSelect && onSelect(id)}
+      onClick={() => onSelectTicket && onSelectTicket(id)}
       className={`${cardStyleMap[status] || cardStyleMap.default} ${
         !isSelected ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
       }`}
@@ -113,21 +113,21 @@ function TicketCard({ ticket, isSelected = false, onSelect }) {
             </button>
           ) : status === 'emergency' ? (
             <button
-              onClick={() => onSelect && onSelect(id)}
+              onClick={() => onSelectTicket && onSelectTicket(id)}
               className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded font-bold text-xs flex items-center gap-1 transition-colors"
             >
               <span className="material-symbols-outlined text-[14px]">priority_high</span> Expedite Load
             </button>
           ) : status === 'held' ? (
             <button
-              onClick={() => onSelect && onSelect(id)}
+              onClick={() => onSelectTicket && onSelectTicket(id)}
               className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded font-medium text-xs flex items-center gap-1 transition-colors"
             >
               <span className="material-symbols-outlined text-[14px]">play_circle</span> Unhold [F4]
             </button>
           ) : (
             <button
-              onClick={() => onSelect && onSelect(id)}
+              onClick={() => onSelectTicket && onSelectTicket(id)}
               className="px-2.5 py-1 bg-slate-100 hover:bg-teal-50 hover:text-pharma-800 text-slate-700 border border-slate-300 rounded font-medium text-xs flex items-center gap-1 transition-colors"
             >
               <span className="material-symbols-outlined text-[14px]">download</span> Recall / Load [Enter]

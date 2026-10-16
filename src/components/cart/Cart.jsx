@@ -1,10 +1,9 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import CartHeader from './CartHeader'
 import CartItem from './CartItem'
 import CartSummary from './CartSummary'
 import CashTender from './CashTender'
 import PaymentActions from './PaymentActions'
-import { msDB } from '../../mockServer/msDB'
 
 /**
  * Calculates adaptive fast cash tender presets based on the current total payable
@@ -27,13 +26,28 @@ function calculateFastCash(total) {
 
 function Cart({
   activeTicket,
-  users = [],
+  catalog = [],
   discountPercent = 5,
-  setDiscountPercent,
+  onDiscountChange,
   tenderAmount = 500,
-  setTenderAmount,
+  onTenderChange,
 }) {
-  const catalog = users && users.length > 0 ? users : msDB
+  // If no ticket is selected (e.g., initial load or empty queue), show a clean waiting prompt
+  if (!activeTicket) {
+    return (
+      <div className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
+        <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col items-center justify-center h-[calc(100vh-140px)] min-h-[640px] p-8 text-center text-slate-500">
+          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3 text-slate-400">
+            <span className="material-symbols-outlined text-3xl">receipt_long</span>
+          </div>
+          <h3 className="font-bold text-slate-700 text-sm">No Dispensing Ticket Loaded</h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
+            Select a patient ticket from the queue on the left or scan a token barcode to load dispensed medicines into the checkout register.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   // 1. Initialize cart state directly from Counter-1 dispensed items embedded in activeTicket
   const [cartItems, setCartItems] = useState(() => {
@@ -125,15 +139,15 @@ function Cart({
       <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[640px]">
         {/* 1. Cart Header & Patient Info */}
         <CartHeader
-          ticketNumber={activeTicket?.ticketNumber || '#TK-1082'}
+          ticketNumber={activeTicket.ticketNumber || `#${activeTicket.id}`}
           itemsCount={cartItems.length}
           patientName={
-            activeTicket?.patientName
+            activeTicket.patientName
               ? `${activeTicket.patientName} ${activeTicket.patientNote || ''}`
-              : 'Mrs. Farhana Yasmin (Walk-in)'
+              : 'Walk-in Customer'
           }
-          doctorName={activeTicket?.doctor || 'Prof. Dr. M. Rahman (BSMMU)'}
-          onClear={handleClear}
+          doctorName={activeTicket.doctor || 'No Prescription Attached'}
+          onClearCart={handleClear}
         />
 
         {/* 2. Dense Spreadsheet Table Header */}
@@ -145,34 +159,36 @@ function Cart({
           <div className="col-span-2 text-right">Total(৳)</div>
         </div>
 
-        {/* 3. Quick-Add from msDB Catalog Ribbon */}
-        <div className="bg-slate-50/80 px-2.5 py-1 border-b border-slate-200 flex items-center justify-between text-[11px] gap-1">
-          <span className="font-semibold text-slate-600 flex items-center gap-1 shrink-0 text-[10px]">
-            <span className="material-symbols-outlined text-[13px] text-pharma-700">medication</span>
-            msDB Catalog:
-          </span>
-          <div className="flex items-center gap-1 overflow-x-auto py-0.5">
-            {catalog.map((med) => (
-              <button
-                key={med.id}
-                type="button"
-                onClick={() => handleQuickAdd(med)}
-                className="px-1.5 py-0.5 bg-white hover:bg-teal-50 hover:border-pharma-700 text-slate-700 hover:text-pharma-900 border border-slate-300 rounded font-mono font-medium text-[10px] whitespace-nowrap transition-colors flex items-center gap-0.5 cursor-pointer shadow-2xs"
-                title={`Add ${med.brandName} (${med.generic}) - ৳${med.price.toFixed(2)}`}
-              >
-                <span className="text-pharma-700 font-bold">+</span>
-                <span>{med.brandName}</span>
-                <span className="text-slate-400">৳{med.price}</span>
-              </button>
-            ))}
+        {/* 3. Quick-Add from Medicines Catalog Ribbon */}
+        {catalog.length > 0 && (
+          <div className="bg-slate-50/80 px-2.5 py-1 border-b border-slate-200 flex items-center justify-between text-[11px] gap-1">
+            <span className="font-semibold text-slate-600 flex items-center gap-1 shrink-0 text-[10px]">
+              <span className="material-symbols-outlined text-[13px] text-pharma-700">medication</span>
+              Quick-Add:
+            </span>
+            <div className="flex items-center gap-1 overflow-x-auto py-0.5">
+              {catalog.map((med) => (
+                <button
+                  key={med.id}
+                  type="button"
+                  onClick={() => handleQuickAdd(med)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-teal-50 hover:border-pharma-700 text-slate-700 hover:text-pharma-900 border border-slate-300 rounded font-mono font-medium text-[10px] whitespace-nowrap transition-colors flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                  title={`Add ${med.brandName} (${med.generic}) - ৳${med.price.toFixed(2)}`}
+                >
+                  <span className="text-pharma-700 font-bold">+</span>
+                  <span>{med.brandName}</span>
+                  <span className="text-slate-400">৳{med.price}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 4. Cart Items List / Empty State */}
         {cartItems.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500">
             <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">shopping_cart_off</span>
-            <h3 className="font-bold text-slate-700 text-sm">Cart is Empty / বিলিং কার্ট খালি</h3>
+            <h3 className="font-bold text-slate-700 text-sm">Cart is Empty</h3>
             <p className="text-xs text-slate-400 mt-1 max-w-xs">
               All items removed from this ticket. Click any medicine above or reload Counter-1 dispensed items below.
             </p>
@@ -211,7 +227,7 @@ function Cart({
           <CartSummary
             subtotal={subtotal}
             discountPercent={discountPercent}
-            onDiscountChange={setDiscountPercent}
+            onDiscountChange={onDiscountChange}
             discountAmount={discountAmount}
             roundingAmount={roundingAmount}
             totalPayable={totalPayable}
@@ -220,7 +236,7 @@ function Cart({
           {/* Cash Tender & Change Calculator */}
           <CashTender
             tenderAmount={tenderAmount}
-            onTenderChange={setTenderAmount}
+            onTenderChange={onTenderChange}
             totalPayable={totalPayable}
             fastCashOptions={fastCashOptions}
           />

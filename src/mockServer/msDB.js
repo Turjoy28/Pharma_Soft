@@ -1,5 +1,5 @@
 // ── Mock Medicines Inventory Database ──
-export const msDB = [
+export const medicineDB = [
   { 
     id: "med-1",
     brandName: "Napa Extra",
