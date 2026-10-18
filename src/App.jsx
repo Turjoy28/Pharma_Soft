@@ -4,6 +4,9 @@ import ShortcutBar from './components/layout/ShortcutBar'
 import TicketQueue from './components/queue/TicketQueue'
 import Cart from './components/cart/Cart'
 import Footer from './components/layout/Footer'
+import PaymentModal from './components/cart/PaymentModal'
+import ReceiptPreview from './components/cart/ReceiptPreview'
+import { ticketService, medicineService } from './services/api'
 
 function App() {
   // 1. Production Async State: Starts empty, waits for server response
@@ -20,6 +23,15 @@ function App() {
   const [discountPercent, setDiscountPercent] = useState(5)
   const [tenderAmount, setTenderAmount] = useState(500)
 
+  // 4. Modal & Settlement State (Day 8 Implementation)
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false)
+  const [activePaymentMethod, setActivePaymentMethod] = useState('Cash')
+  const [activeTotals, setActiveTotals] = useState(null)
+  const [activeCartItems, setActiveCartItems] = useState([])
+  const [completedInvoice, setCompletedInvoice] = useState(null)
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
+
   // Live Clock (BST)
   useEffect(() => {
     const updateTime = () => {
@@ -34,8 +46,8 @@ function App() {
     return () => clearInterval(timer)
   }, [])
 
-  // Retrieve exact ticket data through ticket ID (Optimistic local find + Server fetch)
-  const handleSelectTicket = (ticketId) => {
+  // Retrieve exact ticket data through ticket ID (Optimistic local find + Axios service)
+  const handleSelectTicket = async (ticketId) => {
     setSelectedTicketId(ticketId)
 
     // A. Immediate local find so UI is instantly responsive
@@ -44,92 +56,121 @@ function App() {
       setSelectedTicket(localMatch)
     }
 
-    // B. Fetch fresh server data in background for that ticket
-    fetch(`https://api.pharmaDashboard.com/tickets/${ticketId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-        return res.json()
-      })
-      .then((data) => {
-        if (data.ticket) {
-          setSelectedTicket(data.ticket)
-        }
-      })
-      .catch((err) => {
-        console.warn(`[App] API lookup for ticket ${ticketId} failed:`, err)
-      })
+    // B. Fetch fresh server data in background via Axios service
+    try {
+      const freshTicket = await ticketService.getById(ticketId)
+      if (freshTicket) {
+        setSelectedTicket(freshTicket)
+      }
+    } catch (err) {
+      console.warn(`[App] API lookup for ticket ${ticketId} failed:`, err)
+    }
   }
 
   // Manual refresh tickets handler
-  const handleRefreshTickets = () => {
+  const handleRefreshTickets = async () => {
     setTicketsLoading(true)
-    fetch('https://api.pharmaDashboard.com/tickets')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-        return res.json()
-      })
-      .then((data) => {
-        const loadedTickets = data.tickets || []
-        setTickets(loadedTickets)
+    try {
+      const loadedTickets = await ticketService.getAll()
+      // Filter out tickets that are already paid from the active queue
+      const activeOnly = loadedTickets.filter((t) => t.status !== 'paid')
+      setTickets(activeOnly)
 
-        // Keep current ticket selected if it still exists, otherwise pick the first
-        if (selectedTicketId) {
-          const match = loadedTickets.find((t) => t.id === selectedTicketId)
-          setSelectedTicket(match || loadedTickets[0] || null)
-          if (!match && loadedTickets[0]) {
-            setSelectedTicketId(loadedTickets[0].id)
-          }
-        } else if (loadedTickets.length > 0) {
-          setSelectedTicketId(loadedTickets[0].id)
-          setSelectedTicket(loadedTickets[0])
+      // Keep current ticket selected if it still exists, otherwise pick the first
+      if (selectedTicketId) {
+        const match = activeOnly.find((t) => t.id === selectedTicketId)
+        setSelectedTicket(match || activeOnly[0] || null)
+        if (!match && activeOnly[0]) {
+          setSelectedTicketId(activeOnly[0].id)
         }
-        setTicketsLoading(false)
-      })
-      .catch((err) => {
-        console.error('[App] Refresh error:', err)
-        setTicketsLoading(false)
-      })
+      } else if (activeOnly.length > 0) {
+        setSelectedTicketId(activeOnly[0].id)
+        setSelectedTicket(activeOnly[0])
+      } else {
+        setSelectedTicket(null)
+        setSelectedTicketId(null)
+      }
+    } catch (err) {
+      console.error('[App] Refresh error:', err)
+    } finally {
+      setTicketsLoading(false)
+    }
   }
 
-  // Initial Load: Fetch Tickets & Medicines from server on mount
+  // Initial Load: Fetch Tickets & Medicines from server in parallel on mount
   useEffect(() => {
-    setTicketsLoading(true)
+    const loadInitialData = async () => {
+      setTicketsLoading(true)
+      try {
+        const [loadedTickets, loadedMedicines] = await Promise.all([
+          ticketService.getAll(),
+          medicineService.getAll(),
+        ])
 
-    // 1. Fetch tickets queue from server
-    fetch('https://api.pharmaDashboard.com/tickets')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-        return res.json()
-      })
-      .then((data) => {
-        const loadedTickets = data.tickets || []
-        setTickets(loadedTickets)
-
-        // Automatically select the first pending ticket in queue
-        if (loadedTickets.length > 0) {
-          setSelectedTicketId(loadedTickets[0].id)
-          setSelectedTicket(loadedTickets[0])
+        const activeOnly = loadedTickets.filter((t) => t.status !== 'paid')
+        setTickets(activeOnly)
+        if (activeOnly.length > 0) {
+          setSelectedTicketId(activeOnly[0].id)
+          setSelectedTicket(activeOnly[0])
         }
-        setTicketsLoading(false)
-      })
-      .catch((err) => {
-        console.error('[App] Failed to load tickets queue from server:', err)
-        setTicketsLoading(false)
-      })
 
-    // 2. Fetch Medicines Catalog from server
-    fetch('https://api.pharmaDashboard.com/medicines')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-        return res.json()
-      })
-      .then((data) => {
-        setCatalog(data.medicines || [])
-      })
-      .catch((err) => {
-        console.error('[App] Failed to load medicines catalog:', err)
-      })
+        setCatalog(loadedMedicines)
+      } catch (err) {
+        console.error('[App] Failed to load initial data:', err)
+      } finally {
+        setTicketsLoading(false)
+      }
+    }
+
+    loadInitialData()
   }, []) // Empty array = Runs ONCE on real page load
+
+  // Open Settlement Modal
+  const handleOpenPayment = (method, totals, cartItems) => {
+    setActivePaymentMethod(method)
+    setActiveTotals(totals)
+    setActiveCartItems(cartItems)
+    setIsPaymentOpen(true)
+  }
+
+  // Finalize Sale & Confirm Settlement (Calls API & MSW)
+  const handleConfirmPayment = async (paymentData) => {
+    if (!selectedTicket) return
+    setIsSubmittingPayment(true)
+    try {
+      const response = await ticketService.pay(selectedTicket.id, paymentData)
+
+      if (response && response.invoice) {
+        setCompletedInvoice(response.invoice)
+        setIsPaymentOpen(false)
+        setIsReceiptOpen(true)
+
+        // Remove the paid ticket from active queue
+        setTickets((prev) => {
+          const updated = prev.filter((t) => t.id !== selectedTicket.id)
+          if (updated.length > 0) {
+            setSelectedTicketId(updated[0].id)
+            setSelectedTicket(updated[0])
+          } else {
+            setSelectedTicketId(null)
+            setSelectedTicket(null)
+          }
+          return updated
+        })
+      }
+    } catch (err) {
+      console.error('[App] Payment failure:', err)
+      const message = err.response?.data?.message || err.message || 'Payment processing failed.'
+      alert(`[Settlement Error] ${message}`)
+    } finally {
+      setIsSubmittingPayment(false)
+    }
+  }
+
+  // Finish receipt preview and advance
+  const handleNewSale = () => {
+    setIsReceiptOpen(false)
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800 antialiased flex flex-col justify-between selection:bg-teal-700 selection:text-white">
@@ -156,11 +197,35 @@ function App() {
           onDiscountChange={setDiscountPercent}
           tenderAmount={tenderAmount}
           onTenderChange={setTenderAmount}
+          onOpenPayment={handleOpenPayment}
         />
       </main>
 
       {/* 4. Hardware Status & DGDA Compliance Ribbon */}
       <Footer />
+
+      {/* 5. Day 8 Split Payment Settlement Modal */}
+      {selectedTicket && activeTotals && isPaymentOpen && (
+        <PaymentModal
+          key={`${selectedTicket.id}-${activePaymentMethod}-${activeTotals.totalPayablePoisha}`}
+          isOpen={isPaymentOpen}
+          onClose={() => setIsPaymentOpen(false)}
+          activeTicket={selectedTicket}
+          totals={activeTotals}
+          cartItems={activeCartItems}
+          initialMethod={activePaymentMethod}
+          onConfirmPayment={handleConfirmPayment}
+          isSubmitting={isSubmittingPayment}
+        />
+      )}
+
+      {/* 6. Day 8 80mm Thermal Receipt Preview & Print Modal */}
+      <ReceiptPreview
+        isOpen={isReceiptOpen}
+        onClose={() => setIsReceiptOpen(false)}
+        invoice={completedInvoice}
+        onNewSale={handleNewSale}
+      />
     </div>
   )
 }

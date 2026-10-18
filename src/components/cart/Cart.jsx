@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import CartHeader from './CartHeader'
 import CartItem from './CartItem'
 import CartSummary from './CartSummary'
@@ -32,8 +32,48 @@ function Cart({
   onDiscountChange,
   tenderAmount = 500,
   onTenderChange,
+  onOpenPayment,
 }) {
-  // If no ticket is selected (e.g., initial load or empty queue), show a clean waiting prompt
+  // 1. Initialize cart state directly from Counter-1 dispensed items embedded in activeTicket
+  const [cartItems, setCartItems] = useState(() => {
+    if (activeTicket?.items && activeTicket.items.length > 0) {
+      return activeTicket.items.map((item, idx) => ({
+        ...item,
+        serialNumber: idx + 1,
+      }))
+    }
+    return []
+  })
+
+  // 2. Exact Financial Math via Integer Poisha Engine
+  const totals = calculateCartTotals(cartItems, discountPercent)
+  const fastCashOptions = calculateFastCash(totals.totalPayableTaka)
+
+  // 3. Keyboard shortcut listener for F6, F8, F9, F12
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!onOpenPayment || cartItems.length === 0) return
+
+      if (e.key === 'F6') {
+        e.preventDefault()
+        onOpenPayment('Cash', totals, cartItems)
+      } else if (e.key === 'F9') {
+        e.preventDefault()
+        onOpenPayment('bKash / Nagad', totals, cartItems)
+      } else if (e.key === 'F8') {
+        e.preventDefault()
+        onOpenPayment('Card', totals, cartItems)
+      } else if (e.key === 'F12') {
+        e.preventDefault()
+        onOpenPayment('Cash', totals, cartItems)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onOpenPayment, totals, cartItems])
+
+  // 4. Early return if no ticket is selected (AFTER all hooks)
   if (!activeTicket) {
     return (
       <div className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
@@ -50,22 +90,7 @@ function Cart({
     )
   }
 
-  // 1. Initialize cart state directly from Counter-1 dispensed items embedded in activeTicket
-  const [cartItems, setCartItems] = useState(() => {
-    if (activeTicket?.items && activeTicket.items.length > 0) {
-      return activeTicket.items.map((item, idx) => ({
-        ...item,
-        serialNumber: idx + 1,
-      }))
-    }
-    return []
-  })
-
-  // 2. Exact Financial Math via Integer Poisha Engine
-  const totals = calculateCartTotals(cartItems, discountPercent)
-  const fastCashOptions = calculateFastCash(totals.totalPayableTaka)
-
-  // 3. Quantity & Item Handlers
+  // 5. Quantity & Item Handlers
   const handleIncrement = (id) => {
     setCartItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, qty: item.qty + 1 } : item))
@@ -121,6 +146,7 @@ function Cart({
           id: `item-${Date.now()}-${med.id}`,
           medId: med.id,
           brandName: `${med.brandName} ${med.generic.split(' ')[0] || ''}`.trim(),
+          generic: med.generic,
           batch: med.batch,
           expiry: med.expiry,
           price: med.price,
@@ -128,6 +154,12 @@ function Cart({
         },
       ]
     })
+  }
+
+  const handleTriggerPayment = (method = 'Cash') => {
+    if (onOpenPayment && cartItems.length > 0) {
+      onOpenPayment(method, totals, cartItems)
+    }
   }
 
   return (
@@ -238,7 +270,12 @@ function Cart({
           />
 
           {/* Payment Method Selector & Actions */}
-          <PaymentActions totalPayable={totals.formatted.totalPayable} />
+          <PaymentActions
+            totalPayable={totals.formatted.totalPayable}
+            onSelectPayment={(method) => handleTriggerPayment(method)}
+            onSettle={() => handleTriggerPayment('Cash')}
+            onHold={() => alert('Ticket held in pending state')}
+          />
         </div>
       </div>
     </div>
