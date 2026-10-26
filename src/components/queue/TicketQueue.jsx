@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import TicketCard from './TicketCard'
+import { useCounterStore } from '../../stores/useCounterStore.js'
 
 /**
  * Senior Skeleton Component: Prevents layout shift (CLS) while loading
@@ -34,13 +35,15 @@ function TicketCardSkeleton() {
   )
 }
 
-function TicketQueue({
-  tickets = [],
-  loading = false,
-  selectedTicketId = null,
-  onSelectTicket,
-  onRefreshTickets,
-}) {
+function TicketQueue() {
+  // 🏪 Direct Zustand Subscription (Zero Prop Drilling)
+  const tickets = useCounterStore((s) => s.tickets)
+  const loading = useCounterStore((s) => s.loadingTickets)
+  const selectedTicketId = useCounterStore((s) => s.selectedTicketId)
+  const onSelectTicket = useCounterStore((s) => s.selectTicket)
+  const onRefreshTickets = useCounterStore((s) => s.fetchTickets)
+
+  // Local UI Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
 
@@ -78,10 +81,9 @@ function TicketQueue({
 
   return (
     <div className="col-span-12 lg:col-span-7 xl:col-span-7 flex flex-col gap-2.5">
-      <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col">
-        
-        {/* Queue Header & Live Status */}
-        <div className="p-3 bg-slate-50 border-b border-slate-300 rounded-t flex flex-col gap-2.5">
+      <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[640px]">
+        {/* Queue Header Ribbon */}
+        <div className="p-3 border-b border-slate-300 bg-slate-50 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-pharma-700 text-[22px]">receipt_long</span>
@@ -99,6 +101,7 @@ function TicketQueue({
             </div>
             <div className="flex items-center gap-1.5">
               <button
+                type="button"
                 onClick={onRefreshTickets}
                 className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono text-xs flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
                 title="Refresh queue from Counter 1"
@@ -130,7 +133,10 @@ function TicketQueue({
                 </button>
               )}
             </div>
-            <button className="px-3 py-1.5 bg-pharma-50 hover:bg-teal-100 border border-teal-300 rounded text-pharma-800 font-medium text-xs flex items-center gap-1.5 whitespace-nowrap transition-colors">
+            <button
+              type="button"
+              className="px-3 py-1.5 bg-pharma-50 hover:bg-teal-100 border border-teal-300 rounded text-pharma-800 font-medium text-xs flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer"
+            >
               <span className="material-symbols-outlined text-[16px] text-pharma-700">qr_code_scanner</span> Scan QR / Token Barcode
             </button>
           </div>
@@ -142,6 +148,7 @@ function TicketQueue({
               return (
                 <button
                   key={cat.id}
+                  type="button"
                   onClick={() => setActiveCategory(cat.id)}
                   className={`px-2.5 py-1 rounded font-medium whitespace-nowrap transition-colors border cursor-pointer ${
                     isActive
@@ -156,17 +163,15 @@ function TicketQueue({
           </div>
         </div>
 
-        {/* Dynamic Ticket Cards List / Senior States */}
+        {/* Dynamic Ticket Cards List */}
         <div className="p-2.5 flex flex-col gap-2 overflow-y-auto max-h-[660px]">
           {loading ? (
-            /* 1. Senior Loading State: 3 Skeleton Cards (Zero Layout Shift) */
             <div className="flex flex-col gap-2 py-1">
               <TicketCardSkeleton />
               <TicketCardSkeleton />
               <TicketCardSkeleton />
             </div>
           ) : tickets.length === 0 ? (
-            /* 2. Senior Empty State: Entire Queue is Empty (Store Open / Caught Up) */
             <div className="p-10 text-center flex flex-col items-center justify-center bg-slate-50/60 rounded border border-dashed border-slate-300 my-4">
               <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 border border-emerald-200 shadow-2xs">
                 <span className="material-symbols-outlined text-3xl">task_alt</span>
@@ -184,7 +189,6 @@ function TicketQueue({
               </button>
             </div>
           ) : filteredTickets.length === 0 ? (
-            /* 3. Senior Filter Empty State: Search or Category Miss */
             <div className="p-8 text-center flex flex-col items-center justify-center bg-slate-50/60 rounded border border-dashed border-slate-300 my-3">
               <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2.5">
                 <span className="material-symbols-outlined text-2xl">search_off</span>
@@ -202,7 +206,6 @@ function TicketQueue({
               </button>
             </div>
           ) : (
-            /* 4. Ready State: Render Real Cards */
             filteredTickets.map((ticket) => (
               <TicketCard
                 key={ticket.id}
@@ -225,7 +228,6 @@ function TicketQueue({
             {loading ? 'Syncing DB...' : `${tickets.length} Dispensing Tickets in Queue`}
           </span>
         </div>
-
       </div>
     </div>
   )

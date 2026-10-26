@@ -1,13 +1,14 @@
 ﻿import { useState } from 'react'
-import { formatTaka } from '../../utils/money'
+import { formatTaka } from '../../utils/money.js'
+import { useCounterStore } from '../../stores/useCounterStore.js'
 
-function ReceiptPreview({
-  isOpen,
-  onClose,
-  invoice,
-  onNewSale,
-}) {
+function ReceiptPreview() {
   const [isDuplicate, setIsDuplicate] = useState(false)
+
+  // 🏪 Direct Zustand Subscriptions
+  const isOpen = useCounterStore((s) => s.isReceiptOpen)
+  const onClose = useCounterStore((s) => s.closeReceipt)
+  const invoice = useCounterStore((s) => s.completedInvoice)
 
   if (!isOpen || !invoice) return null
 
@@ -17,21 +18,20 @@ function ReceiptPreview({
 
   const handleFinishSale = () => {
     onClose()
-    if (onNewSale) {
-      onNewSale()
-    }
   }
 
   // Format date nicely
-  const printDate = invoice.createdAt ? new Date(invoice.createdAt).toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  }) : new Date().toLocaleString()
+  const printDate = invoice.createdAt
+    ? new Date(invoice.createdAt).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      })
+    : new Date().toLocaleString()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
@@ -151,24 +151,27 @@ function ReceiptPreview({
               </div>
 
               <div className="divide-y divide-dotted divide-slate-200 py-1">
-                {invoice.items && invoice.items.map((item, idx) => (
-                  <div key={item.id || idx} className="py-1 text-[10px]">
-                    <div className="font-bold leading-tight">{item.brandName}</div>
-                    <div className="text-[9px] text-slate-500 flex justify-between">
-                      <span>B: {item.batch || 'N/A'} • Exp: {item.expiry || 'N/A'}</span>
-                    </div>
-                    <div className="grid grid-cols-12 text-[10px] pt-0.5">
-                      <div className="col-span-6 text-slate-500 text-[9px]">
-                        {item.generic ? item.generic.slice(0, 22) : ''}
+                {invoice.items &&
+                  invoice.items.map((item, idx) => (
+                    <div key={item.id || idx} className="py-1 text-[10px]">
+                      <div className="font-bold leading-tight">{item.brandName}</div>
+                      <div className="text-[9px] text-slate-500 flex justify-between">
+                        <span>
+                          B: {item.batch || 'N/A'} • Exp: {item.expiry || 'N/A'}
+                        </span>
                       </div>
-                      <div className="col-span-2 text-center font-bold">{item.qty}</div>
-                      <div className="col-span-2 text-right">৳{Number(item.price).toFixed(2)}</div>
-                      <div className="col-span-2 text-right font-bold">
-                        ৳{((item.price * item.qty)).toFixed(2)}
+                      <div className="grid grid-cols-12 text-[10px] pt-0.5">
+                        <div className="col-span-6 text-slate-500 text-[9px]">
+                          {item.generic ? item.generic.slice(0, 22) : ''}
+                        </div>
+                        <div className="col-span-2 text-center font-bold">{item.qty}</div>
+                        <div className="col-span-2 text-right">৳{Number(item.price).toFixed(2)}</div>
+                        <div className="col-span-2 text-right font-bold">
+                          ৳{(item.price * item.qty).toFixed(2)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
 
@@ -199,16 +202,17 @@ function ReceiptPreview({
             {/* Payment & Change Tender Breakdown */}
             <div className="py-2 border-b border-dashed border-slate-400 text-[10px] space-y-1">
               <div className="font-bold uppercase text-[9px] text-slate-500">Payment Breakdown:</div>
-              {invoice.payments && invoice.payments.map((p, idx) => (
-                <div key={idx} className="flex justify-between">
-                  <span>
-                    {p.method}
-                    {p.trxId ? ` (Trx: ${p.trxId})` : ''}
-                    {p.authCode ? ` (${p.authCode})` : ''}:
-                  </span>
-                  <span className="font-bold">৳{p.amountTaka || formatTaka(p.amountPoisha)}</span>
-                </div>
-              ))}
+              {invoice.payments &&
+                invoice.payments.map((p, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span>
+                      {p.method}
+                      {p.trxId ? ` (Trx: ${p.trxId})` : ''}
+                      {p.authCode ? ` (${p.authCode})` : ''}:
+                    </span>
+                    <span className="font-bold">৳{p.amountTaka || formatTaka(p.amountPoisha)}</span>
+                  </div>
+                ))}
               {invoice.changePoisha > 0 && (
                 <div className="flex justify-between font-bold text-emerald-800 pt-0.5">
                   <span>Change Returned:</span>

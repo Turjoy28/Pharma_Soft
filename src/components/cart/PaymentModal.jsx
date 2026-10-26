@@ -1,16 +1,8 @@
 ﻿import { useState, useId } from 'react'
-import { toPoisha, formatTaka } from '../../utils/money'
+import { toPoisha, formatTaka, calculateCartTotals } from '../../utils/money.js'
+import { useCounterStore } from '../../stores/useCounterStore.js'
 
-function PaymentModal({
-  isOpen,
-  onClose,
-  activeTicket,
-  totals,
-  cartItems = [],
-  initialMethod = 'Cash',
-  onConfirmPayment,
-  isSubmitting = false,
-}) {
+function PaymentModal() {
   const cashAmountId = useId()
   const cashTenderId = useId()
   const bkashAmountId = useId()
@@ -18,6 +10,18 @@ function PaymentModal({
   const cardAmountId = useId()
   const cardRefId = useId()
 
+  // 🏪 Direct Zustand Subscriptions
+  const isOpen = useCounterStore((s) => s.isPaymentOpen)
+  const onClose = useCounterStore((s) => s.closePayment)
+  const initialMethod = useCounterStore((s) => s.activePaymentMethod)
+  const onConfirmPayment = useCounterStore((s) => s.confirmPayment)
+  const isSubmitting = useCounterStore((s) => s.isSubmittingPayment)
+  const cartItems = useCounterStore((s) => s.cartItems)
+  const discountPercent = useCounterStore((s) => s.discountPercent)
+  const activeTicket = useCounterStore((s) => s.selectedTicket)
+
+  // 🧮 Pure Calculation
+  const totals = calculateCartTotals(cartItems, discountPercent)
   const payablePoisha = totals.totalPayablePoisha
   const payableTaka = totals.totalPayableTaka
 

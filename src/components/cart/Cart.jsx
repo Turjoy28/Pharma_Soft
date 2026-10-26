@@ -1,10 +1,11 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useEffect } from 'react'
 import CartHeader from './CartHeader'
 import CartItem from './CartItem'
 import CartSummary from './CartSummary'
 import CashTender from './CashTender'
 import PaymentActions from './PaymentActions'
-import { calculateCartTotals, toPoisha } from '../../utils/money'
+import { toPoisha, calculateCartTotals } from '../../utils/money.js'
+import { useCounterStore } from '../../stores/useCounterStore.js'
 
 /**
  * Calculates adaptive fast cash tender presets based on the current total payable
@@ -25,55 +26,53 @@ function calculateFastCash(total) {
     .slice(0, 5)
 }
 
-function Cart({
-  activeTicket,
-  catalog = [],
-  discountPercent = 5,
-  onDiscountChange,
-  tenderAmount = 500,
-  onTenderChange,
-  onOpenPayment,
-}) {
-  // 1. Initialize cart state directly from Counter-1 dispensed items embedded in activeTicket
-  const [cartItems, setCartItems] = useState(() => {
-    if (activeTicket?.items && activeTicket.items.length > 0) {
-      return activeTicket.items.map((item, idx) => ({
-        ...item,
-        serialNumber: idx + 1,
-      }))
-    }
-    return []
-  })
+function Cart() {
+  // 🏪 Direct Zustand Subscriptions
+  const activeTicket = useCounterStore((s) => s.selectedTicket)
+  const cartItems = useCounterStore((s) => s.cartItems)
+  const catalog = useCounterStore((s) => s.catalog)
+  const discountPercent = useCounterStore((s) => s.discountPercent)
+  const setDiscountPercent = useCounterStore((s) => s.setDiscountPercent)
+  const tenderAmount = useCounterStore((s) => s.tenderAmount)
+  const setTenderAmount = useCounterStore((s) => s.setTenderAmount)
 
-  // 2. Exact Financial Math via Integer Poisha Engine
+  const incrementQty = useCounterStore((s) => s.incrementQty)
+  const decrementQty = useCounterStore((s) => s.decrementQty)
+  const removeItem = useCounterStore((s) => s.removeItem)
+  const clearCart = useCounterStore((s) => s.clearCart)
+  const reloadTicketMedicines = useCounterStore((s) => s.reloadTicketMedicines)
+  const quickAddMedicine = useCounterStore((s) => s.quickAddMedicine)
+  const openPayment = useCounterStore((s) => s.openPayment)
+
+  // 🧮 Pure Calculation (Zero infinite loops!)
   const totals = calculateCartTotals(cartItems, discountPercent)
   const fastCashOptions = calculateFastCash(totals.totalPayableTaka)
 
   // 3. Keyboard shortcut listener for F6, F8, F9, F12
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (!onOpenPayment || cartItems.length === 0) return
+      if (cartItems.length === 0) return
 
       if (e.key === 'F6') {
         e.preventDefault()
-        onOpenPayment('Cash', totals, cartItems)
+        openPayment('Cash')
       } else if (e.key === 'F9') {
         e.preventDefault()
-        onOpenPayment('bKash / Nagad', totals, cartItems)
+        openPayment('bKash / Nagad')
       } else if (e.key === 'F8') {
         e.preventDefault()
-        onOpenPayment('Card', totals, cartItems)
+        openPayment('Card')
       } else if (e.key === 'F12') {
         e.preventDefault()
-        onOpenPayment('Cash', totals, cartItems)
+        openPayment('Cash')
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onOpenPayment, totals, cartItems])
+  }, [openPayment, cartItems.length])
 
-  // 4. Early return if no ticket is selected (AFTER all hooks)
+  // 4. Waiting state if no ticket is selected
   if (!activeTicket) {
     return (
       <div className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
@@ -90,78 +89,6 @@ function Cart({
     )
   }
 
-  // 5. Quantity & Item Handlers
-  const handleIncrement = (id) => {
-    setCartItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, qty: item.qty + 1 } : item))
-    )
-  }
-
-  const handleDecrement = (id) => {
-    setCartItems((prev) =>
-      prev
-        .map((item) => {
-          if (item.id === id) {
-            const nextQty = item.qty - 1
-            return nextQty > 0 ? { ...item, qty: nextQty } : null
-          }
-          return item
-        })
-        .filter(Boolean)
-    )
-  }
-
-  const handleRemove = (id) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id))
-  }
-
-  const handleClear = () => {
-    setCartItems([])
-  }
-
-  const handleReloadDefault = () => {
-    if (activeTicket?.items && activeTicket.items.length > 0) {
-      setCartItems(
-        activeTicket.items.map((item, idx) => ({
-          ...item,
-          serialNumber: idx + 1,
-        }))
-      )
-    } else {
-      setCartItems([])
-    }
-  }
-
-  const handleQuickAdd = (med) => {
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.medId === med.id)
-      if (existing) {
-        return prev.map((item) =>
-          item.medId === med.id ? { ...item, qty: item.qty + 1 } : item
-        )
-      }
-      return [
-        ...prev,
-        {
-          id: `item-${Date.now()}-${med.id}`,
-          medId: med.id,
-          brandName: `${med.brandName} ${med.generic.split(' ')[0] || ''}`.trim(),
-          generic: med.generic,
-          batch: med.batch,
-          expiry: med.expiry,
-          price: med.price,
-          qty: 1,
-        },
-      ]
-    })
-  }
-
-  const handleTriggerPayment = (method = 'Cash') => {
-    if (onOpenPayment && cartItems.length > 0) {
-      onOpenPayment(method, totals, cartItems)
-    }
-  }
-
   return (
     <div className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
       <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[640px]">
@@ -175,7 +102,7 @@ function Cart({
               : 'Walk-in Customer'
           }
           doctorName={activeTicket.doctor || 'No Prescription Attached'}
-          onClearCart={handleClear}
+          onClearCart={clearCart}
         />
 
         {/* 2. Dense Spreadsheet Table Header */}
@@ -199,7 +126,7 @@ function Cart({
                 <button
                   key={med.id}
                   type="button"
-                  onClick={() => handleQuickAdd(med)}
+                  onClick={() => quickAddMedicine(med)}
                   className="px-1.5 py-0.5 bg-white hover:bg-teal-50 hover:border-pharma-700 text-slate-700 hover:text-pharma-900 border border-slate-300 rounded font-mono font-medium text-[10px] whitespace-nowrap transition-colors flex items-center gap-0.5 cursor-pointer shadow-2xs"
                   title={`Add ${med.brandName} (${med.generic}) - ৳${med.price.toFixed(2)}`}
                 >
@@ -222,7 +149,7 @@ function Cart({
             </p>
             <button
               type="button"
-              onClick={handleReloadDefault}
+              onClick={reloadTicketMedicines}
               className="mt-3 px-3 py-1.5 bg-pharma-700 hover:bg-pharma-800 text-white font-bold rounded text-xs shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <span className="material-symbols-outlined text-[15px]">refresh</span>
@@ -241,9 +168,9 @@ function Cart({
                 qty={item.qty}
                 price={item.price}
                 total={(toPoisha(item.price) * item.qty) / 100}
-                onIncrement={() => handleIncrement(item.id)}
-                onDecrement={() => handleDecrement(item.id)}
-                onRemove={() => handleRemove(item.id)}
+                onIncrement={() => incrementQty(item.id)}
+                onDecrement={() => decrementQty(item.id)}
+                onRemove={() => removeItem(item.id)}
               />
             ))}
           </div>
@@ -255,7 +182,7 @@ function Cart({
           <CartSummary
             subtotal={totals.formatted.subtotal}
             discountPercent={discountPercent}
-            onDiscountChange={onDiscountChange}
+            onDiscountChange={setDiscountPercent}
             discountAmount={totals.formatted.discount}
             roundingAmount={totals.formatted.rounding}
             totalPayable={totals.formatted.totalPayable}
@@ -264,18 +191,13 @@ function Cart({
           {/* Cash Tender & Change Calculator */}
           <CashTender
             tenderAmount={tenderAmount}
-            onTenderChange={onTenderChange}
+            onTenderChange={setTenderAmount}
             totalPayable={totals.totalPayableTaka}
             fastCashOptions={fastCashOptions}
           />
 
           {/* Payment Method Selector & Actions */}
-          <PaymentActions
-            totalPayable={totals.formatted.totalPayable}
-            onSelectPayment={(method) => handleTriggerPayment(method)}
-            onSettle={() => handleTriggerPayment('Cash')}
-            onHold={() => alert('Ticket held in pending state')}
-          />
+          <PaymentActions />
         </div>
       </div>
     </div>
