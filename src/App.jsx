@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import Header from './components/layout/Header'
 import ShortcutBar from './components/layout/ShortcutBar'
 import TicketQueue from './components/queue/TicketQueue'
@@ -7,30 +7,20 @@ import Footer from './components/layout/Footer'
 import PaymentModal from './components/cart/PaymentModal'
 import ReceiptPreview from './components/cart/ReceiptPreview'
 import { useCounterStore } from './stores/useCounterStore.js'
+import { useLiveClock } from './hooks/useLiveClock.js'
+import { usePosShortcuts } from './hooks/usePosShortcuts.js'
 
 function App() {
-  const [currentTime, setCurrentTime] = useState('')
+  // ⏰ Real-time clock & ⌨️ Global POS shortcut bindings
+  const currentTime = useLiveClock()
+  usePosShortcuts()
 
   // 🏪 Direct Modal Visibility Subscriptions
   const isPaymentOpen = useCounterStore((s) => s.isPaymentOpen)
   const isReceiptOpen = useCounterStore((s) => s.isReceiptOpen)
   const activeTicket = useCounterStore((s) => s.selectedTicket)
 
-  // 1. Live Clock (BST)
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date()
-      const hrs = String(now.getHours()).padStart(2, '0')
-      const mins = String(now.getMinutes()).padStart(2, '0')
-      const secs = String(now.getSeconds()).padStart(2, '0')
-      setCurrentTime(`${hrs}:${mins}:${secs}`)
-    }
-    updateTime()
-    const timer = setInterval(updateTime, 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  // 2. Initial Mount: Initialize station (tickets & catalog in parallel)
+  // Initial Mount: Initialize station (tickets & catalog in parallel)
   useEffect(() => {
     useCounterStore.getState().initStation()
   }, [])

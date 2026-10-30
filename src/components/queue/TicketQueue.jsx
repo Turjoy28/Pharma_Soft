@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import TicketCard from './TicketCard'
 import { useCounterStore } from '../../stores/useCounterStore.js'
 
@@ -68,8 +68,8 @@ function TicketQueue() {
       activeCategory === 'all'
         ? true
         : activeCategory === 'active'
-        ? t.status === 'active'
-        : t.category === activeCategory
+          ? t.status === 'active'
+          : t.category === activeCategory
 
     return matchesSearch && matchesCategory
   })
@@ -116,6 +116,7 @@ function TicketQueue() {
             <div className="relative flex-1">
               <span className="absolute left-2.5 top-2 text-slate-400 material-symbols-outlined text-[16px]">search</span>
               <input
+                data-shortcut="search-ticket"
                 className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-pharma-700 font-sans"
                 placeholder="Search Ticket # [F2], Patient Name or Mobile..."
                 type="text"
@@ -150,11 +151,10 @@ function TicketQueue() {
                   key={cat.id}
                   type="button"
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-2.5 py-1 rounded font-medium whitespace-nowrap transition-colors border cursor-pointer ${
-                    isActive
+                  className={`px-2.5 py-1 rounded font-medium whitespace-nowrap transition-colors border cursor-pointer ${isActive
                       ? 'bg-pharma-700 text-white border-pharma-700 shadow-xs'
                       : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
-                  }`}
+                    }`}
                 >
                   {cat.label} ({cat.count})
                 </button>

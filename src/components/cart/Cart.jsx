@@ -1,4 +1,3 @@
-﻿import { useEffect } from 'react'
 import CartHeader from './CartHeader'
 import CartItem from './CartItem'
 import CartSummary from './CartSummary'
@@ -42,37 +41,12 @@ function Cart() {
   const clearCart = useCounterStore((s) => s.clearCart)
   const reloadTicketMedicines = useCounterStore((s) => s.reloadTicketMedicines)
   const quickAddMedicine = useCounterStore((s) => s.quickAddMedicine)
-  const openPayment = useCounterStore((s) => s.openPayment)
 
   // 🧮 Pure Calculation (Zero infinite loops!)
   const totals = calculateCartTotals(cartItems, discountPercent)
   const fastCashOptions = calculateFastCash(totals.totalPayableTaka)
 
-  // 3. Keyboard shortcut listener for F6, F8, F9, F12
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (cartItems.length === 0) return
-
-      if (e.key === 'F6') {
-        e.preventDefault()
-        openPayment('Cash')
-      } else if (e.key === 'F9') {
-        e.preventDefault()
-        openPayment('bKash / Nagad')
-      } else if (e.key === 'F8') {
-        e.preventDefault()
-        openPayment('Card')
-      } else if (e.key === 'F12') {
-        e.preventDefault()
-        openPayment('Cash')
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openPayment, cartItems.length])
-
-  // 4. Waiting state if no ticket is selected
+  // 3. Waiting state if no ticket is selected
   if (!activeTicket) {
     return (
       <div className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
