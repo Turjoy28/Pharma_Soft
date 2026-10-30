@@ -9,10 +9,13 @@ export const createTicketSlice = (set, get) => ({
   // 🏢 1. Station Routing: 'counter1' (Dispensing) vs 'counter2' (Billing)
   activeCounter: 'counter2',
   setActiveCounter: (counter) => set({ activeCounter: counter }),
+
   toggleActiveCounter: () =>
-    set((s) => ({
-      activeCounter: s.activeCounter === 'counter1' ? 'counter2' : 'counter1',
-    })),
+    set((s) => {
+      console.log(s);
+
+      return {activeCounter: s.activeCounter === 'counter1' ? 'counter2' : 'counter1',}
+    }),
 
   // 🎟️ 2. Prescription Tickets Queue State (Counter 2)
   tickets: [],
@@ -62,11 +65,13 @@ export const createTicketSlice = (set, get) => ({
       lineTotal: 85.0,
     },
   ],
+
   patientInfo: {
     name: "Mrs. Nusrat Jahan (01712-349811)",
     doctor: "Prof. Dr. M. Rahman (BSMMU) • Token #TK-1086",
     ticketToken: "TK-1086",
   },
+  
   setPatientInfo: (info) =>
     set((s) => ({ patientInfo: { ...s.patientInfo, ...info } })),
 

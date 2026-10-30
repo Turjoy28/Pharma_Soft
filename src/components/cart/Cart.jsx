@@ -50,7 +50,7 @@ function Cart() {
   if (!activeTicket) {
     return (
       <div className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
-        <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col items-center justify-center h-[calc(100vh-140px)] min-h-[640px] p-8 text-center text-slate-500">
+        <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col items-center justify-center h-[calc(100vh-140px)] min-h-[520px] p-8 text-center text-slate-500">
           <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3 text-slate-400">
             <span className="material-symbols-outlined text-3xl">receipt_long</span>
           </div>
@@ -65,7 +65,7 @@ function Cart() {
 
   return (
     <div className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
-      <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[640px]">
+      <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[520px]">
         {/* 1. Cart Header & Patient Info */}
         <CartHeader
           ticketNumber={activeTicket.ticketNumber || `#${activeTicket.id}`}

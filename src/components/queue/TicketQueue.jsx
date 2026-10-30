@@ -81,7 +81,7 @@ function TicketQueue() {
 
   return (
     <div className="col-span-12 lg:col-span-7 xl:col-span-7 flex flex-col gap-2.5">
-      <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[640px]">
+      <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[520px]">
         {/* Queue Header Ribbon */}
         <div className="p-3 border-b border-slate-300 bg-slate-50 flex flex-col gap-2">
           <div className="flex items-center justify-between">
@@ -164,7 +164,7 @@ function TicketQueue() {
         </div>
 
         {/* Dynamic Ticket Cards List */}
-        <div className="p-2.5 flex flex-col gap-2 overflow-y-auto max-h-[660px]">
+        <div className="p-2.5 flex-1 flex flex-col gap-2 overflow-y-auto">
           {loading ? (
             <div className="flex flex-col gap-2 py-1">
               <TicketCardSkeleton />
@@ -218,7 +218,7 @@ function TicketQueue() {
         </div>
 
         {/* Queue Status Footer */}
-        <div className="p-2.5 bg-slate-50 border-t border-slate-300 flex items-center justify-between text-xs text-slate-600">
+        <div className="p-2.5 bg-slate-50 border-t border-slate-300 flex items-center justify-between text-xs text-slate-600 mt-auto">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
             <span className="font-medium">Counter 1 Dispenser Link:</span>

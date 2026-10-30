@@ -19,7 +19,7 @@ function PrescriptionBasket() {
 
   return (
     <div className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
-      <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[640px]">
+      <div className="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[520px]">
         {/* Cart & Patient Information Header */}
         <div className="p-3 bg-slate-50 border-b border-slate-300 rounded-t flex flex-col gap-2">
           <div className="flex items-center justify-between">
