@@ -1,0 +1,341 @@
+# Resuming from a compaction
+
+You are continuing work on the task described above, but you have lost access to the full conversation history, and need to resume work efficiently using the progress summary below:
+
+# User Requests
+The following were user requests from the truncated conversation in chronological order:
+1. It jumps STRAIGHT to the Store function in ticketSlice.js:
+but how it jums it to the zustand store where is the code it tells?
+2. it bubbles up
+3. okay I understand the project till now now I want to go forward read the Master PRD & built the architecture of the next steps what I should do now & next 7 days what I should built as a senior engineer insturct me the flow I should go depending to the prd goal u should think like a senior & guide me as a junior what I should learn also parallely
+/goal 
+4. criticise your last advice that u gave me in context of my last prompt looking at the professional angels & also alligned with my exact prompt
+5. what should I do that u be able to read the prd?
+6. okay now again read the prd carefully & look last 3 responses you give me looking combined give me the steps & the work I should do for next 7 days in my project context & the master prd
+7. also should I go for monorepo structure cause it is becoming very large codebase
+8. continue
+9. Add a Counter toggle or navigation tab in Header.jsx to switch between Counter 1 (Dispensing) and Counter 2 (Billing) (Shortcut [F1]).
+& make the files that I should paste the whole UI first
+10. <!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dhaka Pharma POS - ঢাকা ফার্মা বিলিং টার্মিনাল</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            pharma: {
+              50: "#f0fdf9",
+              100: "#ccfbf1",
+              600: "#0d9488",
+              700: "#0f766e",
+              800: "#115e59",
+              900: "#134e4a",
+              dark: "#064e3b"
+            },
+            bkash: "#E2136E",
+            nagad: "#E34E26"
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    @layer base {
+      body {
+        -webkit-font-smoothing: antialiased;
+        background-color: #f1f5f9;
+        color: #0f172a;
+      }
+    }
+    /* Compact scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-100 font-sans text-slate-800 antialiased flex flex-col justify-between selection:bg-teal-700 selection:text-white">
+<!-- TOP HEADER BAR: Real-world Bangladesh Pharmacy Hospital Grade Header -->
+<header class="bg-pharma-800 text-white border-b-2 border-pharma-900 shadow-sm sticky top-0 z-40 select-none"><div class="px-4 py-2 flex items-center justify-between gap-4">
+<!-- Brand & Branch Identity -->
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-white text-pharma-800 font-extrabold flex items-center justify-center border border-teal-200 shadow-inner">
+<span class="material-symbols-outlined text-[26px] text-pharma-700">local_pharmacy</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h1 class="text-base font-bold tracking-tight text-white flex items-center gap-1.5 leading-none">
+<span class="font-bold">ঢাকা ফার্মা</span>
+<span class="text-xs text-teal-200 font-normal">|</span>
+<span class="text-teal-50 font-semibold tracking-normal text-sm">Dhaka Pharma Ltd.</span>
+</h1>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-900 text-teal-200 border border-teal-700 uppercase">
+          DGDA Reg: 142/DHK/2019
+        </span>
+</div>
+<div class="flex items-center gap-2 text-xs text-teal-100 mt-1">
+<span class="font-medium text-white flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-teal-300">storefront</span>
+          Dhanmondi Branch - Store #02 | Terminal 01 (Clinical Dispensing)
+        </span>
+<span>•</span>
+<span class="text-teal-200">Rx Token: <strong class="font-mono text-white">TK-1086</strong></span>
+</div>
+</div>
+</div>
+<!-- Center: Edge Status & Quick Station Switch -->
+<div class="hidden lg:flex items-center gap-3">
+<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-emerald-900/90 border border-emerald-500/50 text-emerald-100 text-xs shadow-inner">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+<span class="font-bold tracking-wide text-[11px] uppercase">Offline Edge Engine Active</span>
+<span class="text-emerald-300 font-mono text-[11px] font-semibold">• SQLite Local 100% Synced</span>
+</div>
+<div class="flex items-center gap-1 bg-pharma-900/80 border border-teal-700/60 rounded px-2 py-0.5 text-[11px]">
+<span class="text-slate-300 text-[10px]">Switch:</span>
+<a class="px-1.5 py-0.5 bg-teal-800 hover:bg-teal-700 text-teal-100 rounded font-mono font-bold text-[10px] border border-teal-600 transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[12px]">point_of_sale</span> Counter 2 [F2]
+      </a>
+<a class="px-1.5 py-0.5 bg-pharma-800 hover:bg-teal-700 text-teal-200 rounded font-medium text-[10px] transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[12px]">dashboard</span> Manager
+      </a>
+</div>
+</div>
+<!-- Pharmacist, Shift & Live Clock -->
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="flex items-center justify-end gap-1.5 text-xs text-white font-semibold">
+<span class="material-symbols-outlined text-[15px] text-teal-300">badge</span>
+<span>Pharm. Tanvir Ahmed, B.Pharm</span>
+<span class="text-[10px] px-1.5 py-0.2 bg-teal-700 text-teal-100 rounded font-normal font-mono">Reg: A-14928</span>
+</div>
+<div class="text-[11px] text-teal-200 flex items-center justify-end gap-2 font-mono mt-0.5">
+<span>Terminal 01 (Dispensing)</span>
+<span>•</span>
+<span class="text-white font-bold" id="live-clock">23:21:55 BST</span>
+</div>
+</div>
+<div class="flex items-center gap-1 border-l border-teal-700 pl-3">
+<button class="p-1.5 text-teal-100 hover:text-white hover:bg-pharma-700 rounded transition-colors text-xs flex items-center gap-1 border border-teal-600/50" title="Day Closing &amp; Shift Summary">
+<span class="material-symbols-outlined text-[17px]">calculate</span>
+<span class="hidden sm:inline text-[11px]">Shift End</span>
+</button>
+<button class="p-1.5 text-teal-100 hover:text-white hover:bg-pharma-700 rounded transition-colors" title="Lock Terminal">
+<span class="material-symbols-outlined text-[17px]">lock</span>
+</button>
+</div>
+</div>
+</div></header>
+<!-- SECONDARY ACTION & SHORTCUT SUB-NAV (For fast clickers) -->
+<div class="bg-white border-b border-slate-300 px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs"><div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1 text-slate-700 font-medium">
+<span class="material-symbols-outlined text-[16px] text-pharma-700">clinical_notes</span>
+    Current Station: <strong class="text-slate-900 font-bold">Counter 1 — Pharmacist Dispensing &amp; Rx Verification</strong>
+</span>
+<span class="text-slate-300">|</span>
+<span class="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 font-mono text-[11px]">
+<span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+    Connected to Counter 2 (Cashier Billing): <strong>READY (Socket LAN 127.0.0.1:8080)</strong>
+</span>
+</div>
+<div class="flex items-center gap-1.5 font-mono text-[11px] overflow-x-auto">
+<div class="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
+<span class="text-pharma-700 font-bold">[F2]</span><span>Search/Barcode</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
+<span class="text-pharma-700 font-bold">[F3]</span><span>Generic/Substitutes</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
+<span class="text-pharma-700 font-bold">[F4]</span><span>Stock/Rack Locator</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
+<span class="text-pharma-700 font-bold">[F7]</span><span>Rx Scan / OCR</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-teal-50 border border-teal-300 rounded text-teal-800 font-semibold">
+<span class="text-teal-700 font-bold">[F8]</span><span>Shelf Put-Away</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-emerald-600 text-white rounded font-bold shadow-xs">
+<span>[F12]</span><span>Send Ticket</span>
+</div>
+</div></div>
+<!-- MAIN POS WORKSPACE: DENSE ERGONOMIC SPLIT LAYOUT -->
+<main class="flex-1 p-3 grid grid-cols-12 gap-3 items-start max-w-[1920px] mx-auto w-full">
+<!-- LEFT COLUMN: Search, Categories & Rapid Product Dispense (7 Cols on desktop) -->
+<div class="col-span-12 lg:col-span-7 xl:col-span-7 flex flex-col gap-2.5">
+<!-- Fast Barcode & Medicine Multi-Search Box -->
+<div class="bg-white p-3 rounded border border-slate-300 shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between text-xs">
+<label class="font-bold text-slate-800 flex items-center gap-1.5" for="barcode-input">
+<span class="material-symbols-outlined text-pharma-700 text-[18px]">barcode_scanner</span>
+<span>দ্রুত অনুসন্ধান / Barcode or Medicine Search</span>
+<span class
+<truncated 38051 bytes>
+
+<summary>
+### 1. Task Overview
+- **User's Core Request:** The user provided an exact HTML/CSS template for the Counter 1 (Dispensing Pharmacist & Rx Verification) UI and requested:
+  1. Add a Counter station toggle / navigation tab in `Header.jsx` to switch between Counter 1 (Dispensing) and Counter 2 (Billing) with keyboard shortcut `[F1]`.
+  2. Build and match the Counter 1 UI based on the exact provided HTML template within the project's React 19 + Tailwind v4 + Zustand architecture.
+  3. Work step-by-step ("first do built quick features I will go slow & steady").
+- **Scope & Boundaries:** Keep code aligned with `docs/PRD_Master_v3.txt`, `docs/60_Day_Roadmap.txt`, and `docs/Assessment.txt`. The user explicitly wants a single app where Counter 1 and Counter 2 interact seamlessly (avoid monorepo refactors for now).
+
+---
+
+### 2. Progress
+- **Extracted Reference Documentation:**
+  - `docs/PRD_Master_v3.txt` (113 KB, extracted from Master PRD v3.0 PDF via `pdf-parse`)
+  - `docs/60_Day_Roadmap.txt` (75 KB, extracted from 60-Day Build Roadmap PDF)
+  - `docs/Assessment.txt` (9.6 KB, extracted from Assessment PDF)
+- **Station Toggle & Shortcuts (Completed & Verified):**
+  - `src/stores/slices/ticketSlice.js`: Added `activeCounter` (`'counter1'` | `'counter2'`), `setActiveCounter`, `toggleActiveCounter`, `dispenseBasket`, `patientInfo`, `addToDispenseBasket`, `updateDispenseQty`, `removeFromDispenseBasket`, `clearDispenseBasket`, `dispatchTicket`.
+  - `src/hooks/usePosShortcuts.js`: Wired `[F1]` to toggle counter station. Contextual `[F2]` focuses medicine search in C1, ticket search in C2. `[F12]` dispatches ticket in C1, opens payment in C2.
+  - `src/components/layout/Header.jsx`: Added segmented station switch `[F1]` with live badge counters (`dispenseBasket.length` and `tickets.length`) and dynamic user credentials (Pharmacist vs Cashier).
+  - `src/components/layout/ShortcutBar.jsx`: Updated station indicator and contextual F-key shortcuts (`[F1] Switch`, `[F2] Search Med`, `[F3] Patient Info`, `[F4] Clear Basket`, `[F12] Dispatch Ticket`).
+- **Counter 1 Dispensing Left Column UI (Completed):**
+  - `src/mockServer/msDB.js`: Updated `medicineDB` with the exact 6 medicines from the user's template (`Napa Extra`, `Seclo 20mg`, `Tofen Syrup 100ml`, `Azithrocin 500`, `Sergel 20mg`, `Monas 10mg` + `Lantus SoloStar`), matching DGDA tags, shelf positions, stock, and FEFO tags.
+  - `src/components/dispense/MedicineGrid.jsx`: Created with search box (`id="barcode-input"`, `data-shortcut="search-medicine"`), "BARCODE READY" badge, category buttons (`All`, `⭐ Fast Moving / OTC`, `Gastric & PPI`, `Antibiotics & Schedule H`, `Cardio & Diabetic`, `Respiratory & Syrups`), the 6 medicine cards with "+ Dispense" buttons, and the bottom "Physical Rack Position Locator & Generic Substitutes" box.
+- **In-Progress / Next Immediate Component:**
+  - `src/components/dispense/PrescriptionBasket.jsx`: Needs to be updated to match the exact right-column HTML from the user's prompt (dense spreadsheet table with `SL`, `Item & Batch`, `Qty` with steppers, `Rate(৳)`, `Total(৳)`, delete button, Patient & Prescriber input fields, Clinical Validation badge, `[F12] Send Ticket to Counter 2` button, `[F4] Hold`, `[F7] Print Pick Slip`).
+  - `src/components/dispense/DispensingStation.jsx`: Needs to import `MedicineGrid` and `PrescriptionBasket`.
+
+---
+
+### 3. Key Findings & Architecture Decisions
+- **Monorepo decision:** The user asked whether to switch to a monorepo because the codebase felt "very large". The codebase is actually only 33 files / 2,920 lines of code. A monorepo switch now would cause premature workspace setup headaches; it was deferred until backend SQLite processes arrive in Phase B (Day 13).
+- **Template match:** The user's provided HTML represents Counter 1. The left 7 columns hold the search box, fast category buttons, medicine quick grid, and rack locator. The right 5 columns hold the FEFO Pick List table, patient details, and dispatch buttons.
+- **Data flow:**
+  - Clicking "+ Dispense" in `MedicineGrid.jsx` calls `addToDispenseBasket(med)`.
+  - Steppers in `PrescriptionBasket.jsx` call `updateDispenseQty(id, delta)`.
+  - Clicking `[F12] Send Ticket to Counter 2` calls `dispatchTicket()`, which adds the new ticket to `tickets` (and posts to MSW `POST /api/tickets`), clears the basket, and switches `activeCounter` to `'counter2'` with the ticket loaded in the cart.
+
+---
+
+### 4. Errors & Fixes
+- **Error:** Initial PDF reading failed because the filename contained a Unicode em-dash (`—`, `\u2014`) instead of a regular hyphen (`-`), throwing "file does not exist".
+  - *Fix:* Used PowerShell to discover the exact char code (`8212`), extracted all text via `npx --yes pdf-parse text ...` into `docs/PRD_Master_v3.txt`, `docs/60_Day_Roadmap.txt`, and `docs/Assessment.txt`.
+- **Error:** Subagents hit rate-limit / quota exhausted (`RESOURCE_EXHAUSTED (code 429)`).
+  - *Fix:* Executed all reading and file inspections directly via standard primary agent tools (`read_file`, `run_command`, `write_file`, `edit_file`).
+
+---
+
+### 5. Active Context
+- **Active Workspace:** `c:\Users\Turjoy\Desktop\Pharma_Soft`
+- **Shell / OS:** PowerShell on Windows.
+- **Current Verification State:** `npm test` has 17 passing tests; `npm run lint` has 0 errors/warnings; `npm run build` succeeds cleanly.
+- **Git State:** Working tree has modified files in `src/` and untracked `src/components/dispense/` and `docs/`.
+
+---
+
+### 6. Next Steps
+1. **Update `src/components/dispense/PrescriptionBasket.jsx`:**
+   - Match the exact right-column HTML from the user's prompt:
+     - Header: "ফার্মাসিস্ট পিক লিস্ট / FEFO Pick List & Rx Queue", item count badge, `Ticket #TK-1086` tag, clear cart `delete_sweep` button.
+     - Two input fields: `Patient Details:` (e.g. "Mrs. Nusrat Jahan (01712-349811)") and `Prescriber & Institution:` (e.g. "Prof. Dr. M. Rahman (BSMMU) • Token #TK-1086"). Two-way bound to `patientInfo` in `useCounterStore`.
+     - Dense Table Header: `SL` (col 1), `Item & Batch` (col 5), `Qty` (col 2), `Rate(৳)` (col 2), `Total(৳)` (col 2).
+     - Table rows: Item title, batch badge, expiry, shelf code, quantity stepper (`-`, readonly qty field, `+`), rate, item subtotal, delete row `close` button.
+     - Financial breakdown: Total Dispensed Items (`X items, Y units`), DGDA Clinical Validation badge, Target Settlement Station banner.
+     - Big Est. Bill Total: `৳ 243.00` in `text-2xl font-black text-pharma-800`.
+     - Big green button: `[F12] Send Ticket to Counter 2 (Cashier Billing) →` which triggers `dispatchTicket()`.
+     - Two auxiliary buttons: `Hold Prescription [F4]` and `Print Pick Slip [F7]`.
+2. **Update `src/components/dispense/DispensingStation.jsx`:**
+   - Assemble `MedicineGrid` (Left 7 cols) and `PrescriptionBasket` (Right 5 cols).
+   - Remove any deprecated imports (`MedicineSearch` or `BatchPicker` if fully superseded by `MedicineGrid`).
+3. **Update `src/components/layout/Footer.jsx`:**
+   - Align peripheral indicators with the template: Honeywell Voyager 1250g, Epson Thermal TM-T88VI, Instant Socket LAN (127.0.0.1:8080), DGDA Reg: 142/DHK/2019, Node: DHN-POS-01, Dhaka Pharma POS v4.2 Pro.
+4. **Verification:**
+   - Run `npm test -- --run` (all tests must pass).
+   - Run `npm run lint` (0 errors, 0 warnings).
+   - Run `npm run build` (production Vite build verification).
+5. **Report to User:** Confirm Counter 1 matches the exact layout, demonstrates full keyboard interactivity (`[F1]`, `[F2]`, `[F12]`, steppers, "+ Dispense" buttons), and verify next slow & steady steps.
+
+---
+
+### 7. Commitments & Constraints
+- Stay grounded in `docs/PRD_Master_v3.txt` and `docs/60_Day_Roadmap.txt`.
+- Do not attempt monorepo migrations.
+- Maintain integer poisha math and immutable append-only principles.
+- Preserve all existing comments and docstrings.
+- Keep tests and ESLint 100% green at all times.
+</summary>
+
+You have the 1 following artifacts written to the artifacts directory:
+
+[ARTIFACT: architecture-and-next-7-days-roadmap]
+Path: file:///C:/Users/Turjoy/.gemini/antigravity/brain/b64ccb9f-e06c-49a6-a18e-0d173e62cea9/architecture-and-next-7-days-roadmap.md
+Last Edited: 2026-10-30T18:47:40Z
+
+# Subagents
+The following subagents were spawned during this conversation (up to 20).
+View the conversation log to see the full conversation with the subagent and use send_message with the conversation_id to communicate with them.
+
+{
+  "spec":  {
+    "typeName":  "research",
+    "role":  "PRD Master v3 Reader"
+  },
+  "result":  {
+    "conversationId":  "3f92e10c-0e78-435b-a02c-09a764c2b528",
+    "logAbsoluteUri":  "file:///C:/Users/Turjoy/.gemini/antigravity/brain/3f92e10c-0e78-435b-a02c-09a764c2b528/.system_generated/logs/transcript.jsonl",
+    "workspaceUris":  [
+      "file:///c%3A/Users/Turjoy/Desktop/Pharma_Soft"
+    ]
+  },
+  "spawnStepIndex":  227
+}
+{
+  "spec":  {
+    "typeName":  "research",
+    "role":  "60-Day Roadmap Reader"
+  },
+  "result":  {
+    "conversationId":  "50434b36-bd08-4006-b948-cc2a689a4ae8",
+    "logAbsoluteUri":  "file:///C:/Users/Turjoy/.gemini/antigravity/brain/50434b36-bd08-4006-b948-cc2a689a4ae8/.system_generated/logs/transcript.jsonl",
+    "workspaceUris":  [
+      "file:///c%3A/Users/Turjoy/Desktop/Pharma_Soft"
+    ]
+  },
+  "spawnStepIndex":  229
+}
+{
+  "spec":  {
+    "typeName":  "research",
+    "role":  "Assessment Document Reader"
+  },
+  "result":  {
+    "conversationId":  "2fdb8be4-0015-40c7-8349-8338a1e33f15",
+    "logAbsoluteUri":  "file:///C:/Users/Turjoy/.gemini/antigravity/brain/2fdb8be4-0015-40c7-8349-8338a1e33f15/.system_generated/logs/transcript.jsonl",
+    "workspaceUris":  [
+      "file:///c%3A/Users/Turjoy/Desktop/Pharma_Soft"
+    ]
+  },
+  "spawnStepIndex":  231
+}
+{
+  "spec":  {
+    "typeName":  "research",
+    "role":  "Codebase State Auditor"
+  },
+  "result":  {
+    "conversationId":  "a2cc4188-d3ea-43b8-8828-2c37ad6e6123",
+    "logAbsoluteUri":  "file:///C:/Users/Turjoy/.gemini/antigravity/brain/a2cc4188-d3ea-43b8-8828-2c37ad6e6123/.system_generated/logs/transcript.jsonl",
+    "workspaceUris":  [
+      "file:///c%3A/Users/Turjoy/Desktop/Pharma_Soft"
+    ]
+  },
+  "spawnStepIndex":  233
+}
+
+# Conversation Logs
+Start with the compact transcript; if a step has `truncated_fields`, read only that specific line in `transcript_full.jsonl`:
+- `<appDataDir>/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`
+- `<appDataDir>/brain/<conversation-id>/.system_generated/logs/transcript_full.jsonl`

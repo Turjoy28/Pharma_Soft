@@ -1,4 +1,4 @@
-﻿import axios from 'axios'
+import axios from 'axios'
 
 /**
  * 🌐 Central Axios Client
@@ -60,6 +60,16 @@ export const ticketService = {
    */
   pay: async (id, paymentData) => {
     const response = await apiClient.post(`/tickets/${id}/pay`, paymentData)
+    return response.data
+  },
+
+  /**
+   * Creates a new dispensing ticket (Counter 1 -> Counter 2)
+   * @param {Object} ticketData
+   * @returns {Promise<Object>}
+   */
+  create: async (ticketData) => {
+    const response = await apiClient.post('/tickets', ticketData)
     return response.data
   },
 }

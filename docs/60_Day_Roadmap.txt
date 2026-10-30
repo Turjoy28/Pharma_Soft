@@ -1,0 +1,1592 @@
+60-Day Build Roadmap: Pharmacy SaaS, Shop
+Edge First, 3 Hours a Day
+Oct 15, 2026 · @Saif
+1. Verdict: what 180 hours buy
+In 60 days at 3 hours a day you can build a single-PC pharmacy counter that is correct, not
+a finished product: it works with the network unplugged, it cannot sell expired or over-
+MRP stock, and every taka and tablet can be traced. It is ready for a parallel run on
+throwaway data in a friendly shop. It is not ready for a paying shop.
+Yes, the product is a SaaS and cloud platform; this sprint builds only its first layer, the
+shop edge. The shop must trade offline indefinitely, so the counter, ledger and guards
+come first and the cloud only follows what the shop sends. Sync, tenants, the Owner app
+and the Super Admin console are phases P9 to P11 of the 15-phase plan. To avoid a rewrite
+then, this sprint makes three cloud-ready choices from day 13: a tenant and branch id on
+every business table, primary keys generated as time-ordered UUIDs in the app, and an
+event row for every command carrying its tenant, branch and device.
+On day 60 you will have
+Screens for both counters: Counter 1 dispenses with first-expiry-first-out (FEFO) pick
+suggestions, Counter 2 bills with split payments and a printed receipt.
+A stock ledger by medicine, batch and location (Zone, Rack, Shelf, Bin) that is never
+edited, only appended to, with balances derived from it.
+Database triggers that refuse expired, over-MRP and non-sellable-rack sales, negative
+stock and edits to history.
+Receiving with quarantine and put-away, counts that become adjustments, loose-strip
+and tablet sales.
+Shifts, blind cash close and a Z-report.
+A hash-chained audit log with a verify command, nightly backups and a tested restore.
+On day 60 you will not have
+Cloud sync, an Owner app or a Super Admin console. The shop works alone; the event
+table is written from the start so sync can be added later.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 1 of 41
+
+-- 1 of 41 --
+
+Approvals beyond a second-person PIN, a live manager console, a rules engine, remote
+or offline approval codes, and the pharmacist-on-duty clock-in rule for prescription
+sales.
+Database encryption, a signed installer, a hot standby, and the legal review of the
+compliance matrix.
+How this relates to the 15-phase plan. This is a first sprint inside it, not a replacement. It
+reuses the same stack and repo layout and covers a narrow slice of P0 to P5 in 180 hours;
+the other plan sized P0 to P8 at about nine months. Two things here are new and the 15-
+phase PRD does not have them yet: the Counter 1 to Counter 2 ticket pipeline, and the
+bin-level location tree with a sellable class on every location. Tell me if you want the PRD
+updated to match.
+Three assumptions to check. You get 60 sessions of 3 focused hours; each phase ends
+with a gate day that doubles as your only buffer; and you use AI assistants the way your
+resume says, by verifying the output. The rule that makes that checkable: from Phase B
+on, you write the failing test for each day's definition of done before asking an assistant
+for code.
+2. Stack decision and architecture blueprint
+Use Node.js with JavaScript, one Express process, one SQLite file and a React screen set
+built against mocks first. It is the smallest stack where the database itself can refuse a
+bad sale, nothing needs installing beyond Node, and almost every piece is something you
+already use.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 2 of 41
+
+-- 2 of 41 --
+
+The counters are browsers. Every write goes through the one server, which alone touches
+the SQLite file; the cloud will only receive events the shop sends.
+2.1 The stack
+architecture · shop PC, counters, database, later cloud
+Layer 	Choice 	Why this and not the alternative
+Language 	JavaScript (ES modules) with
+JSDoc types and // @ts-check
+in shared code
+You asked for JavaScript. The
+checker still catches poisha-
+versus-taka and tablet-versus-
+strip mix-ups. TypeScript can
+come after day 60.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 3 of 41
+
+-- 3 of 41 --
+
+Layer 	Choice 	Why this and not the alternative
+Database 	SQLite through better-sqlite3 ,
+WAL mode
+One file, no service on the shop
+PC, real triggers and transactions,
+and a synchronous API that keeps
+your code simple. PostgreSQL on
+the shop PC is a second thing to
+install and keep running; browser
+databases such as IndexedDB
+cannot enforce guards in the
+engine.
+API 	Express and zod 	You know both. zod checks every
+request body and doubles as the
+screen contract. Fastify or NestJS
+would teach you something new
+without making the product
+better.
+Screens 	React, Vite, Tailwind, React
+Router, TanStack Query
+Familiar except TanStack Query,
+which gives you loading, error and
+retry states for free. That is
+exactly the edge states you build
+first.
+UI mocks 	Mock Service Worker (MSW) with
+zod fixtures
+Screens call the real URLs and get
+fixture answers. As each backend
+route lands you delete one mock
+handler; no screen is rewritten.
+Counter to
+counter
+Server-Sent Events 	A ticket sent from Counter 1 must
+appear at Counter 2. SSE is one-
+way, built into browsers, and
+resumes with Last-Event-ID . A
+WebSocket is more than this
+needs.
+Tests 	Vitest (SQL and domain),
+supertest (API), Playwright (three
+flows), fast-check (money splits,
+once)
+SQL guard tests run against an in-
+memory database in milliseconds.
+Design 	Google Stitch or Figma for flows,
+Tailwind tokens for the build
+Flows first, pixels second.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 4 of 41
+
+-- 4 of 41 --
+
+Two rules sit under all of it: money is an integer in poisha ( _minor ), and quantity is an
+integer in base units, the smallest thing you sell, usually a tablet ( _base ). No floats
+anywhere.
+2.2 Why this gives speed and offline safety
+One language, one repo, one process, one file. There is nothing to deploy and nothing
+to call out to, so offline is the default and not a mode.
+The zod schemas in packages/contracts are used three times: by the mocks, by the
+API and by the tests. Screens and backend cannot drift.
+The database is the last guard. A UI or API bug cannot corrupt stock because the
+engine refuses the write.
+Each phase adds roughly one new tool, so your learning curve stays flat until the last
+phase.
+2.3 Data model in one table
+Layer 	Choice 	Why this and not the alternative
+Printing and
+scanning
+Browser print with an 80 mm
+stylesheet; scanner as a
+keyboard; Chrome's --kiosk-
+printing flag
+No driver work in 60 days. A
+thermal printer that takes raw
+commands is a stretch goal on day
+48.
+Packaging 	Express serves the built screens
+on localhost ; Chrome opens
+them in an app window
+No Electron. It works with the
+internet unplugged because
+nothing leaves the PC.
+Later, not in the
+60 days
+Next.js for the Owner and Super
+Admin apps, PostgreSQL with
+row-level security in the cloud, a
+sync agent in the edge server
+Phases P9 to P11 of the 15-phase
+plan. The shop never depends on
+them, and both apps use Next.js
+because you already know it.
+Table 	Holds 	Rule that matters
+medicine ,
+unit_conversion
+Name, strength, form, base
+unit; box, strip and tablet sizes
+in base units
+All sizes are integers; a box of
+10 strips of 10 tablets is 100
+base units
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 5 of 41
+
+-- 5 of 41 --
+
+Table 	Holds 	Rule that matters
+location 	Zone, Rack, Shelf, Bin tree with
+a code such as R03-S2 and a
+sellable class: SELLABLE,
+RECEIVING, QUARANTINE,
+DAMAGED, EXPIRED
+Only a SELLABLE bin can
+supply a sale. Quantity is
+never stored on a location
+batch 	Medicine, batch number, expiry
+date, MRP, cost
+Expiry and MRP are
+snapshotted on every sale
+line
+stock_movement 	One row per move: medicine,
+batch, from location, to
+location, quantity, reason, user,
+time
+Insert only. The from and to
+sides are the two legs of the
+double entry; suppliers,
+customers and write-offs are
+virtual locations
+stock_balance 	Quantity per medicine, batch
+and location
+Maintained by triggers from
+the ledger, never written by
+the app
+dispense_ticket and
+lines
+What Counter 1 picked and
+sent
+Status: draft, sent, claimed,
+paid, cancelled
+sale_invoice , lines,
+payment
+The bill, with price, MRP and
+cost copied onto each line
+Totals are integers; split
+payments must add up
+exactly
+shift , cash_event ,
+z_report
+Float, drops, blind count,
+variance
+Expected cash is derived and
+hidden until the count is
+submitted
+event ,
+idempotency_key
+A record of every command
+and a guard against double
+submits
+Written from the first
+command so sync can be
+added later
+audit_log 	Who did what, with prev_hash
+and hash
+Append only; each row must
+carry the hash of the row
+before it
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 6 of 41
+
+-- 6 of 41 --
+
+2.4 The guards the database enforces
+2.5 The path of one sale
+1. Counter 1 searches or scans, the server returns the earliest-expiry valid batch with its
+shelf code, and the dispenser sends a ticket.
+2. The ticket appears at Counter 2 over SSE. The cashier claims it.
+3. Pay sends one finalise-sale command with a client-generated idempotency key.
+4. In one transaction the server re-picks the batch, writes the invoice, lines, payments,
+ledger movements, audit row and event row. Any guard failure rolls everything back
+and returns a stable error code.
+5. The receipt prints from the browser.
+Decision made for you: Counter 1's pick is advice, not a reservation. Stock is deducted only
+at step 4, so if another sale took the batch first, Counter 2 gets a clear conflict and
+Counter 1 re-picks. Reservations are a later feature.
+Guard 	Mechanism 	Proven by
+No negative stock at a
+physical location
+Trigger on stock_movement
+insert
+A test that tries to move one
+tablet too many
+Sale only from a
+SELLABLE bin
+Trigger on movements to the
+customer location
+Tests from RECEIVING,
+QUARANTINE, DAMAGED and
+EXPIRED racks
+No sale of an expired
+batch
+Trigger comparing expiry with
+the business date
+A batch that expires today and
+one that expired yesterday
+Price at or below MRP 	Trigger on sale line insert, using
+the pro-rata MRP for loose units
+A strip sold at MRP plus one
+poisha
+History cannot change Triggers that abort UPDATE and
+DELETE on ledger, sale lines and
+audit
+An attempted edit of each
+table
+Audit chain continuity 	Trigger requiring prev_hash to
+equal the last row's hash
+A forged row and a deleted
+row
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 7 of 41
+
+-- 7 of 41 --
+
+2.6 What each of your five roles gets in 60 days
+A small shop may give one person several roles. The co-sign rule still stops anyone
+approving their own action.
+Role 	Can do by day 60 	Not yet
+Cashier (Counter 2) 	Sign in with a PIN, open a
+shift, bill tickets, split
+payments, start a return,
+drop cash with a co-signer,
+close blind, read the Z-
+report
+Credit sales; discounts
+above 3 percent without a
+manager PIN
+Pharmacist preset (Counter
+1, Cashier rights plus
+dispensing)
+Search or scan, FEFO picks,
+tickets including
+prescription and controlled
+lines, dispensing register
+entries
+Pharmacist-on-duty clock-in
+(P6)
+Inventory Manager 	Receive, quarantine, put
+away, blind count, expiry
+board, write-off with a co-
+sign, opening stock import
+Work queue and reorder
+drafts (P7), purchase orders,
+supplier returns
+Branch Manager 	Co-sign returns, drops,
+write-offs, large variances
+and discounts up to 10
+percent; manage users and
+PINs; review shifts and Z-
+reports
+Live board, approval inbox
+and day-close lock (P6)
+Owner 	Everything a Branch
+Manager does on the shop
+screens, and verify the audit
+chain
+Morning brief, remote
+approval, policy screen,
+phone app (P10, P12)
+Super Admin 	Nothing in the app; you
+create the tenant, branch,
+users and devices with a
+seed script
+Operations console in
+Next.js (P11)
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 8 of 41
+
+-- 8 of 41 --
+
+3. How every day runs
+Every session is the same six blocks, and the screen always comes before the backend.
+Only the split changes by phase. Keep the same order every day so you spend no energy
+deciding how to start.
+3.1 The default 3-hour timebox
+3.2 How the split moves by phase
+Minutes per day. In Phase A the 30 minutes of check and wrap include writing each
+screen's edge states.
+Clock 	Minutes Block 	What you do
+0:00 to
+0:15
+15 	Review 	Read yesterday's log, run the tests, write
+today's goal in one sentence
+0:15 to
+0:45
+30 	Learn 	One concept only: read the docs, then prove it
+in a 20-line throwaway script
+0:45 to
+1:30
+45 	UI first 	Build or change the screen against mock data;
+add its edge states
+1:30 to
+2:35
+65 	Backend and
+tests
+Write the failing test, then the schema, trigger
+or route that passes it, then delete the mock
+handler
+2:35 to
+2:50
+15 	Check 	Run every item in the day's definition of done
+2:50 to
+3:00
+10 	Wrap 	Commit, write three log lines (done, surprise,
+first step tomorrow)
+Phase 	Days 	Review Learn UI first Backend and tests Check and wrap
+A. UI and mock prototype 1 to 12 10 	20 	120 	0 	30
+B. Database and ledger 	13 to 26 15 	30 	30 	80 	25
+C. Hierarchy and receiving 27 to 38 15 	20 	45 	75 	25
+D. POS billing and hardware 39 to 52 15 	20 	45 	75 	25
+E. Audit and hardening 	53 to 60 15 	30 	20 	90 	25
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 9 of 41
+
+-- 9 of 41 --
+
+3.3 The UI-first loop for one feature
+1. Sketch the flow in Stitch or Figma: who, what they see, what they press.
+2. Build the screen in React against an MSW mock whose shape is a zod schema in
+packages/contracts .
+3. Add the four edge states with the mock's switches: empty, loading, error with retry,
+and refused by a guard with a plain sentence.
+4. Write the failing test for the rule underneath.
+5. Build the schema, trigger or route until the test passes.
+6. Delete that mock handler. The screen must keep working unchanged; if it does not, the
+contract was wrong, so fix the contract.
+3.4 Edge states every screen must have
+Empty (no tickets, no stock, no results) with the next action offered.
+Loading that does not shift the layout.
+Error with a retry button and a stable code in small text for support.
+Refused by a guard: expired batch, over MRP, non-sellable rack, insufficient stock, each
+with its own plain message in English and Bangla.
+Offline banner for the browser-to-server link, which is local, so it only means the server
+is down.
+Usable with keyboard alone on both counters.
+3.5 Definition of done for any day
+3.6 When you fall behind
+Stop at 3 hours. Write what is left as tomorrow's first item; do not stretch to 4 hours,
+because tired code is where ledger bugs are born.
+A gate day is your only buffer. If you are more than 2 days behind at a gate, use the cut
+list in section 11 instead of compressing days.
+The day's named test or checks pass, and npm test is green.
+No console errors on the touched screens.
+Every new screen has its four edge states.
+A commit named Day N: <goal> is pushed and CI is green.
+Three log lines are written. On gate days, also a 3-minute screen recording.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 10 of 41
+
+-- 10 of 41 --
+
+Never skip the failing test to catch up. A guard without a test is a hope.
+4. The 60 days at a glance
+The plan proves the screens first, the stock ledger second, receiving third, billing fourth
+and tamper-evidence last, and each phase ends in a gate you can run.
+Bars are to scale by day. A gate day is the last day of its phase and doubles as your buffer.
+60-day roadmap · 5 phases, 5 gates, to scale by day
+Phase 	Days 	Hours What exists when it ends
+A. UI design and mock
+prototype
+1 to 12 	36 	Every screen of both counters,
+receiving, stock and cash, running on
+mock data with all edge states, and a
+walkthrough with a pharmacist
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 11 of 41
+
+-- 11 of 41 --
+
+5. Day 1 kickoff
+By the end of Day 1 you have a running repo, a green CI build, proof that SQLite triggers
+work on your own machine, a flow map of every screen, and ten questions for a
+pharmacist. Day 1 uses its own clock because there is nothing to review or mock yet.
+Have ready before you start the clock: a Node.js LTS release that better-sqlite3 ships
+prebuilt binaries for, Git, a GitHub account, VS Code, Chrome, and a Figma or Google
+Stitch file named pharmacy-pos-flows .
+Phase 	Days 	Hours What exists when it ends
+B. Database and ledger engine 13 to
+26
+42 	The schema, the ledger, derived
+balances, the guards, the first-expiry
+pick query, the command pattern and
+PIN sign-in, with a failing-write test per
+guard
+C. Store hierarchy and inbound
+receiving
+27 to
+38
+36 	Zone, Rack, Shelf, Bin setup, goods
+receipt, quarantine, put-away, counts,
+expiry board and opening-stock import
+D. POS billing and hardware 	39 to
+52
+42 	Ticket pipeline between the counters,
+finalise-sale, loose-strip and split
+payments, returns, receipt printing,
+scanner, shifts, blind close and Z-
+report
+E. Audit integrity and edge
+hardening
+53 to
+60
+24 	Hash-chained audit with verify,
+capability tests, backups with restore,
+power-cut tests, one-command start
+and a full-day rehearsal
+Clock 	Min Task 	Done when
+0:00 to
+0:15
+15 	Write the goal: "Repo, CI, SQLite
+trigger proof, flow map, pharmacist
+questions." Create a private
+GitHub repo pharmacy-pos .
+Empty repo exists and you can
+push
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 12 of 41
+
+-- 12 of 41 --
+
+5.1 Scaffold commands (60 minutes)
+mkdir pharmacy && cd pharmacy && git init
+npm init -y
+npm pkg set private=true type=module
+mkdir -p apps packages docs/adr
+npm init -w apps/edge -y
+npm init -w packages/db -y
+npm init -w packages/contracts -y
+npm init -w packages/domain -y
+npm create vite@latest apps/web -- --template react
+# edit the root package.json so that: "workspaces": ["apps/*", "packages/*"]
+npm install
+npm i -w apps/edge express zod
+npm i -w packages/db better-sqlite3
+npm i -D vitest prettier
+npm pkg set scripts.test="vitest run"
+node -v > .nvmrc
+Clock 	Min Task 	Done when
+0:15 to
+1:15
+60 	Scaffold the monorepo
+(commands below)
+npm run dev -w apps/web shows
+the Vite page
+1:15 to
+1:45
+30 	Add Vitest, Prettier and the trigger
+smoke test; add the CI file
+npm test green locally and on
+GitHub
+1:45 to
+2:35
+50 	Flow map in Figma or Stitch: three
+flows and the screen list below,
+with five states written under
+each screen
+13 frames named, each with empty,
+loading, error, refused and offline
+noted
+2:35 to
+2:50
+15 	Write the ten pharmacist
+questions below, message one
+pharmacist or shop owner and ask
+to watch a counter for 30 minutes
+this week
+A visit or call is booked, or three
+people are asked
+2:50 to
+3:00
+10 	Commit, push, write three log lines Log file docs/log.md has Day 1
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 13 of 41
+
+-- 13 of 41 --
+
+If better-sqlite3 fails to install, stop and fix it today: install your OS build tools or switch
+to WSL2 on Windows. Every later day depends on it, and finding the problem now is the
+most valuable thing Day 1 can do. A very new Node release can lack a prebuilt binary,
+which makes npm compile from source and fail; if you see a long compiler error, switch to
+the previous LTS. Pin the version in a .nvmrc file and let CI read it.
+5.2 The smoke test: a trigger that refuses a write
+Save as packages/db/smoke.test.js :
+import Database from 'better-sqlite3';
+import { test, expect } from 'vitest';
+test('a trigger can refuse a write', () => {
+const db = new Database(':memory:');
+db.exec(`
+CREATE TABLE t (qty INTEGER NOT NULL);
+CREATE TRIGGER no_negative BEFORE INSERT ON t
+WHEN NEW.qty < 0
+BEGIN SELECT RAISE(ABORT, 'NEGATIVE_QTY'); END;`);
+expect(() => db.prepare('INSERT INTO t VALUES
+(-1)').run()).toThrow('NEGATIVE_QTY');
+});
+This is the whole idea of the project in ten lines: the database says no, whatever the
+screen does.
+5.3 CI file
+Save as .github/workflows/ci.yml . ESLint joins on Day 2 so Day 1 stays inside three
+hours.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 14 of 41
+
+-- 14 of 41 --
+
+name: ci
+on: [push, pull_request]
+jobs:
+test:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
+- uses: actions/setup-node@v4
+with: { node-version-file: .nvmrc }
+- run: npm ci
+- run: npx prettier --check .
+- run: npm test
+5.4 Flow map: three flows and 13 screens
+Receive and shelve: Receiving (goods receipt), Put-away, Stock by location, Expiry
+board, Count sheet, Catalog and unit conversions, Location setup.
+Dispense and bill: Sign-in with PIN pad, Counter 1 dispense, Counter 2 billing queue
+and bill, Receipt preview.
+Close the shift: Shift open and blind close with Z-report, Audit log with verify.
+5.5 Ten questions for a pharmacist
+1. How does a sale move between the dispensing counter and the cashier today?
+2. What do you do when the earliest-expiry strip is not on the front shelf?
+3. Do you sell loose strips or tablets, and how do you price them?
+4. Which fields on a batch label do you copy when goods arrive?
+5. How do you handle near-expiry stock, and from how many months out?
+6. What happens when MRP changes between two batches of the same medicine?
+7. How is cash closed at night, and who counts?
+8. What hardware is there: PC, scanner, receipt printer, drawer, and how often does the
+internet fail?
+9. How are returns and damaged stock handled?
+10. Which records does the drug inspector ask to see, and who must be present when you
+sell prescription or controlled items?
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 15 of 41
+
+-- 15 of 41 --
+
+5.6 Day 1 definition of done
+Watch out today: do not style anything and do not design the database yet. Both feel
+productive and both are wasted before you have watched a counter.
+6. Phase A, days 1 to 12: UI design and mock prototype
+By day 12 every screen of both counters, receiving, stock and cash runs on mock data with
+its edge states, and a pharmacist has clicked through it. Each day lists the screen you
+build first, what you attach underneath (here, the contract and mock that the real
+backend will later replace), what to watch for, and how you know it is done.
+Day 1. Kickoff
+UI first: the flow map and 13-screen inventory.
+Hookup: the repo, CI, and the SQLite trigger smoke test.
+Watch out: no styling, no schema design yet.
+Done when: every item in section 5.6 is ticked.
+Day 2. Design tokens and app shell
+UI first: a Tailwind theme with colours for SELLABLE, QUARANTINE, EXPIRED and
+DAMAGED badges and a large counter type scale; an app shell with a role-based menu,
+a top bar showing counter and shift, an offline banner and a toast area; a /kit page.
+Hookup: add ESLint to CI. Create packages/contracts with the Role and
+LocationClass enums as zod schemas and use them in the shell. The role switcher is a
+mock.
+Watch out: counters are used standing and fast, so use 18 to 20 px base text and large
+hit areas. Never rely on colour alone for stock status; add the word.
+npm test is green locally, including the trigger test, which proves the native SQLite
+install.
+CI is green on GitHub.
+The Vite page runs from apps/web .
+The flow map has 3 flows and 13 screens, each with 5 states noted.
+Ten questions are saved in docs/questions.md and a visit is booked.
+docs/log.md has three lines for Day 1.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 16 of 41
+
+-- 16 of 41 --
+
+Done when: the shell renders five role menus, Tab reaches every control, and CI runs
+lint and tests green.
+Day 3. Component kit
+UI first: Button, Input with on-screen number keypad, Table with sticky header, Modal,
+Badge, Money, QuantityInput (box, strip, tablet), EmptyState, ErrorState and Skeleton,
+each in four states on /kit .
+Hookup: packages/domain gets formatMoney (integer poisha to taka text) and
+formatQuantity (base units to "3 strips + 2 tablets"), with unit tests.
+Watch out: never convert money through a float. Split with integer division and
+remainder, and format as text.
+Done when: the kit shows every component in every state, and the formatters pass
+cases for 0, 1 poisha, 99 poisha and 1,000,000 poisha.
+Day 4. The mock layer
+UI first: a dev toolbar with switches for latency (0, 500, 3000 ms), failure (off, always
+500, random) and empty data.
+Hookup: zod schemas for Medicine, Batch, Location and PickSuggestion; MSW
+handlers for GET /v1/medicines , /v1/batches , /v1/locations , /v1/pick ; a fixture
+file of 40 medicines and 80 batches that includes an expired batch, a batch expiring in
+20 days, quarantine and damaged stock, and one medicine at two MRPs. Keep the file;
+it becomes the database seed later.
+Watch out: all-happy fixtures prove nothing. Name the bad cases
+( EXPIRED_YESTERDAY , QUARANTINE_ONLY ) so tests can find them.
+Done when: the kit page lists medicines through MSW, the toolbar produces loading,
+error and empty states, and a test fails if any fixture breaks its schema.
+Day 5. Counter 1: search and first-expiry pick
+UI first: a search box that always keeps focus, a result list, and for the chosen medicine
+a batch list sorted by earliest expiry showing expiry, MRP, shelf code such as R03-S2
+and quantity, with the first row marked as the suggestion. Prescription, controlled and
+under-90-days badges show on each row. Up, down and Enter work.
+Hookup: the contract for GET /v1/pick?medicineId&qtyBase , returning ordered
+suggestions with batch, location code, expiry, MRP and available base units.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 17 of 41
+
+-- 17 of 41 --
+
+Watch out: the mock must already skip expired and non-sellable stock so the screen
+never shows an impossible choice. Break expiry ties the same way every time: location
+code, then batch id.
+Done when: typing "para" shows at most 8 results, Enter selects with no mouse, and
+the EXPIRED_YESTERDAY batch never appears.
+Day 6. Counter 1: quantity, loose strips, send ticket
+UI first: a quantity box that accepts "2 strips + 3 tablets", a ticket panel with line totals,
+a Send button, and the states: no stock, only near-expiry stock (warning chip), quantity
+larger than one batch (split suggested), and expired-only (refused).
+Hookup: the contract for POST /v1/tickets (lines with medicine, batch, location,
+quantity in base units) and the ticket status values; the MSW handler returns 201 or
+any of the error codes on demand.
+Watch out: a request bigger than one batch becomes two lines in first-expiry order.
+Convert units at the edge only; the contract speaks base units. Show the loose-tablet
+price rounded down from the pro-rata MRP and mark it to confirm with a pharmacist.
+Done when: 2 strips plus 3 tablets of a 10-per-strip product sends 23 base units, and a
+request for 40 tablets over a 25-tablet batch splits into 25 plus 15.
+Day 7. Counter 2: ticket queue and bill
+UI first: a queue panel where tickets from Counter 1 appear live, a Claim button
+showing who claimed, and a bill screen with lines, subtotal, total, tender and change,
+with key hints.
+Hookup: contracts for GET /v1/tickets?status=sent , POST
+/v1/tickets/:id/claim and the stream event ticket.sent ; in the mock, a
+BroadcastChannel fakes the stream between two browser tabs.
+Watch out: two cashiers can claim one ticket. Design the claimed state and the
+"already claimed" message now, not after the first real double sale.
+Done when: a ticket sent from one tab shows in the other within 2 seconds, and a
+second claim shows the conflict message.
+Day 8. Counter 2: payments, hold and receipt
+UI first: split payments across cash, card reference, bKash or Nagad reference and
+credit, where the last field fills the remainder; hold and recall; an 80 mm receipt
+preview with print CSS; a reprint marked DUPLICATE.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 18 of 41
+
+-- 18 of 41 --
+
+Hookup: the contract for POST /v1/sales (ticket, payments, idempotency key) and
+its response, plus the error codes PRICE_ABOVE_MRP , BATCH_EXPIRED ,
+LOCATION_NOT_SELLABLE , INSUFFICIENT_STOCK and TICKET_ALREADY_PAID .
+Watch out: change is only given against cash, and a split must add up exactly, so
+compute in integers. Whether the receipt must show batch and expiry is a question for
+the pharmacist; keep both visible in the preview.
+Done when: any split of up to three payments sums to the total, Ctrl+P prints one 80
+mm column, and each of the five error codes shows its own message.
+Day 9. Receiving and put-away
+UI first: a goods receipt form (supplier, invoice number, lines with batch number, expiry,
+quantity in boxes or strips, rejected quantity, cost, MRP) with checks as you type, and
+a put-away screen with a location picker shaped like the tree.
+Hookup: contracts for POST /v1/receipts , GET /v1/putaway and POST
+/v1/putaway , and a mock location tree of 2 zones, 6 racks and about 40 bins.
+Watch out: received stock is quarantined until it is put away, so the form must never
+offer a sellable location. Expiry printed as MM/YYYY means the last day of that month;
+show the full date back to the user.
+Done when: typing 03/2026 shows 31 Mar 2026, a past expiry is blocked with a
+message, and the put-away list shrinks as lines are placed.
+Day 10. Stock by location and expiry board
+UI first: a Zone, Rack, Shelf, Bin tree with counts and a bin detail panel listing batches;
+an expiry board with 90, 60 and 30 day windows and value at risk; a rack filter.
+Hookup: contracts for GET /v1/stock/tree , GET /v1/stock/by-location/:id and
+GET /v1/expiry-board . Value at risk is base quantity times cost per base unit, an
+integer.
+Watch out: a location never holds a quantity in the model; the tree sums balances.
+Empty racks must still appear, or a manager cannot see where to put stock.
+Done when: a bin is reachable in three clicks, and a test shows the board's total equals
+the sum of its rows on the fixtures.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 19 of 41
+
+-- 19 of 41 --
+
+Day 11. Cash close and audit viewer
+UI first: shift open with a counted float by denomination, cash drop, a close screen that
+asks for the count first and only then shows expected, variance and the Z-report, and
+an audit log list with a Verify button.
+Hookup: contracts for POST /v1/shifts , POST /v1/shifts/:id/close (the request
+carries counts only), GET /v1/audit and GET /v1/audit/verify .
+Watch out: blind means the browser never receives expected cash before the count is
+submitted. Build the mock the same way, so you cannot cheat in the UI and then find
+the real API cannot do it.
+Done when: the network tab shows no expected-cash field before submit, and the Z-
+report states short or over in words.
+Day 12. Gate: prototype walkthrough
+UI first: a 20-minute walkthrough of the three flows with a pharmacist or a patient
+friend using only the mock. Note every hesitation, then fix the five worst.
+Hookup: freeze contracts v0: every endpoint in packages/contracts has a request, a
+response and its error codes, and every fixture parses. Write docs/api.md and tag
+v0-ui .
+Watch out: do not spend the buffer on pixels. After today a contract change needs a
+one-line decision record, because the backend will be built to it.
+Done when: 13 screens each show their 5 states, a 3-minute recording exists, notes sit
+in docs/walkthrough-1.md , and the tag is pushed.
+7. Phase B, days 13 to 26: database and ledger engine
+By day 26 the database refuses every bad write on its own, and the Catalog, Location and
+Stock screens run on real data while the counters still run on mocks. From now on, the "UI
+first" line names the screen state that the day's backend work will light up, and you delete
+one mock handler each time it goes real. Write the failing test before asking an assistant
+for code.
+Day 13. Migrations and base tables
+UI first: the Catalog screen's empty state and an Add medicine form, on mocks.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 20 of 41
+
+-- 20 of 41 --
+
+Hookup: in packages/db , a migration runner (numbered .sql files, each applied in a
+transaction and recorded in schema_migrations ), an openDb(path) that sets
+journal_mode=WAL , foreign_keys=ON and a busy timeout, and migration 001 with
+medicine , unit_conversion and supplier as STRICT tables. Add a test helper that
+builds an in-memory database from all migrations. Add one-row tenant and branch
+tables, the branch carrying its UTC offset (360 for Dhaka), put tenant_id and branch_id
+on every business table from here on, and generate primary keys as time-ordered
+UUIDv7 values in the app (the uuid package), so two shops can never collide when
+sync arrives and keys still sort by time. Give each medicine prescription-required and
+controlled flags.
+Watch out: SQLite turns foreign keys off on every new connection unless you ask.
+Never edit an applied migration; add a new one.
+Done when: a test applies the migrations twice and the second run does nothing,
+PRAGMA foreign_keys returns 1, and integrity_check returns ok.
+Day 14. Express skeleton, error codes and the first real screen
+UI first: connect the Catalog screen to the real API and delete the /v1/medicines
+mock handler.
+Hookup: in apps/edge , createApp(db) with a /v1 prefix, a zod validation middleware
+that uses the contracts, one error mapper that turns database messages such as
+INSUFFICIENT_STOCK into { code, message } , GET /health , and GET and POST
+/v1/medicines . A seed script loads the Day 4 fixtures. Vite proxies /v1 to the API.
+Watch out: never send SQL text to a screen. Test responses against the same zod
+schemas, so mocks and server cannot drift.
+Done when: a supertest call with a bad body returns 400 with VALIDATION_ERROR , and
+the Catalog screen lists seeded medicines through the real API.
+Day 15. The location tree
+UI first: the Location setup screen, adding a zone, rack, shelf or bin under a parent and
+showing its code, with states for a duplicate code and a wrong parent type.
+Hookup: migration location (id, parent, kind, code, sellable class, active, path code)
+with triggers that force bin under shelf, shelf under rack and rack under zone, and a
+unique code. Seed four virtual locations: SUPPLIER, CUSTOMER, ADJUSTMENT and
+WRITE_OFF. A recursive view builds the path. API: GET and POST /v1/locations .
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 21 of 41
+
+-- 21 of 41 --
+
+Watch out: forbid moving a location in this version; deactivate and recreate instead. A
+location with stock cannot change its sellable class, because that would turn
+quarantined stock sellable without a ledger move.
+Done when: each wrong parent type has a failing test, the seed yields 2 zones, 6 racks
+and about 40 bins, and the Location screen uses real data.
+Day 16. Batches
+UI first: a batch list under a medicine with status badges, including expired and near-
+expiry states.
+Hookup: migration batch (medicine, batch number, expiry as ISO text, MRP and cost
+per pack with the pack size in base units), unique on medicine plus batch number,
+checks for positive MRP and a valid date format, and a unique key on batch id plus
+medicine id for the ledger's composite foreign key.
+Watch out: MRP belongs to a pack, not a tablet, so store the pack size beside it. The
+same batch number with a different expiry is a data error to block, not to fix silently.
+Done when: duplicate and malformed batches are refused by tests written straight
+against the database.
+Day 17. The ledger: append-only movements
+UI first: a read-only movement history drawer on the batch detail screen with a reason
+column.
+Hookup: migration stock_movement (medicine, batch, from location, to location,
+quantity in base units above zero, reason, reference, user, time, business date), a
+composite foreign key so the batch must match the medicine, from not equal to to ,
+and triggers that abort UPDATE and DELETE with LEDGER_IMMUTABLE .
+Watch out: one row is both legs of the entry; do not write two rows per move. Direction
+comes from from and to, never from a negative quantity.
+Done when: edit and delete attempts fail, a batch-medicine mismatch fails, and
+opening stock goes in as a SUPPLIER to bin movement.
+Day 18. Derived balances and no negative stock
+UI first: the Stock by location tree reads real balances, including its empty state.
+Hookup: stock_balance per medicine, batch and location, updated by an AFTER
+INSERT trigger on both legs; a BEFORE INSERT trigger refusing a move that takes a
+physical location below zero (virtual locations are exempt); a checkBalances(db)
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 22 of 41
+
+-- 22 of 41 --
+
+function that rebuilds balances from the ledger and compares.
+Watch out: the app never writes stock_balance ; add a test that greps the source for
+it. Run commands with BEGIN IMMEDIATE so two writers cannot interleave.
+Done when: moving one more than is available fails, and checkBalances finds no
+difference after 1,000 seeded random valid movements.
+Day 19. Unit conversion in the domain
+UI first: the QuantityInput from Day 3 on real conversions, with a blocked state for a
+medicine that has none.
+Hookup: packages/domain/units.js with toBase , fromBase and a price-per-base-
+unit helper, table-driven tests, and database checks that every conversion is at least 1
+base unit.
+Watch out: a loose tablet's price is rounded down from pro-rata MRP so it can never
+exceed it. Ten loose tablets may then total a few poisha under a strip, so write that
+down as a decision and confirm it with the pharmacist. If a manufacturer changes the
+pack structure, create a new medicine record.
+Done when: 1 box of 10 strips of 10 tablets equals 100, 2 strips plus 3 tablets equals 23,
+and the rounding cases pass.
+Day 20. Guards: non-sellable racks and expired batches
+UI first: the final wording of the refused-by-guard messages on both counters, with the
+reason in plain language.
+Hookup: triggers on movements to the CUSTOMER location that refuse a source
+whose class is not SELLABLE ( LOCATION_NOT_SELLABLE ) or a batch whose expiry is
+before the business date ( BATCH_EXPIRED ). The business date comes from the
+command's injected clock.
+Watch out: decide whether a batch is sellable on its expiry date and record it; the plan
+assumes yes, inclusive. Returns out of CUSTOMER are not sales, so the guard must not
+block them. Never use SQLite's date('now') in a trigger: it is UTC, so in Dhaka an
+expired batch would stay sellable from midnight to 6 am local, the bug the master's
+section 10 already found. The command computes the branch-local business date from
+the clock and the branch's UTC offset, and the trigger compares expiry with that.
+Done when: six tests pass: RECEIVING, QUARANTINE, DAMAGED and EXPIRED racks
+refused, a batch expiring today sells, a batch expired yesterday is refused.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 23 of 41
+
+-- 23 of 41 --
+
+Day 21. Sales tables and the MRP guard
+UI first: the Counter 2 bill shows MRP beside each line and a warning if a price above it
+is attempted; discounts can only lower a line.
+Hookup: migration for sale_invoice , sale_line (medicine, batch, location, quantity,
+line total, and snapshots of MRP pack price, pack size and cost) and payment ; a trigger
+on sale lines requiring line_total * pack_base <= quantity * mrp_pack_minor ;
+append-only triggers on sale lines.
+Watch out: the cross-multiplication keeps the check in integers, so no rounding ever
+lets a price slip above MRP. Never store a per-tablet price as a decimal.
+Done when: a strip at MRP passes, MRP plus 1 poisha fails with PRICE_ABOVE_MRP , and
+3 loose tablets pass at the floor price and fail one poisha above.
+Day 22. The first-expiry pick query
+UI first: Counter 1's pick cards on real data, with explained states for no stock and
+quarantine-only stock.
+Hookup: pickBatches(medicineId, qtyBase, businessDate) joining balances with
+SELLABLE active locations and unexpired batches, ordered by expiry, then location
+code, then batch id, filling greedily across batches and reporting any shortage; an
+index on medicine and expiry; a real GET /v1/pick .
+Watch out: ignore zero balances; the same batch can sit in two bins; a shortage must
+be reported, not hidden.
+Done when: a table of 8 scenarios passes, including a split across batches, a shortage
+and quarantine-only stock, and the mock handler is deleted.
+Day 23. Command pattern, events and idempotency
+UI first: a Pay button that disables on click, and an already-processed state that shows
+the original receipt.
+Hookup: runCommand(ctx, handler, input) that opens BEGIN IMMEDIATE , injects
+the clock and the user, writes an event row for every command, stores each
+idempotency key with its response inside the same transaction; each event row carries
+tenant, branch and device ids and a per-device sequence number, which is what a later
+sync agent will ship, and rolls back on any error. First command:
+receiveOpeningStock .
+Watch out: scope keys to user and command. Domain code never calls Date.now() .
+Do not catch and hide database errors.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 24 of 41
+
+-- 24 of 41 --
+
+Done when: the same key twice writes once, a failure injected after the document
+write leaves no event row, and every command test sees its event.
+Day 24. PIN sign-in and capabilities
+UI first: a PIN pad with large keys and states for wrong PIN, locked and session expired;
+the menu is built from the user's capabilities.
+Hookup: tables for app_user , role , capability and role_capability as data; PINs
+hashed with crypto.scrypt and a salt; lockout after 5 wrong tries; a short-lived
+signed session kept in an httpOnly cookie (the live stream on Day 40 relies on it); a
+requires('sale.create') middleware that denies by default; the roles Owner,
+Branch Manager, Inventory Manager, Cashier and a Pharmacist preset (Cashier rights
+plus dispensing, as in the master), with a pharmacist credential flag on a user; and a co-
+sign helper where a second user who holds the needed capability types their own PIN
+at the same terminal, and nobody can co-sign their own action. Later days reuse it for
+returns, discounts over the limit, write-offs, large count variances and cash drops.
+Watch out: never store or log a PIN. Lock per user, not per address. Use 6 digits for
+managers.
+Done when: a table-driven test visits every capability for every role including each
+refusal, 5 wrong PINs lock the account, and an old session is refused.
+Day 25. Invariant checker and crash test
+UI first: an admin System check page that lists each invariant as green or red.
+Hookup: checkInvariants(db) covering balances equal to replay, no negative
+balance, every sale line within MRP, no sale of an expired batch, integrity_check ok
+and foreign_key_check empty, run as npm run check . A crash test spawns a child
+process that writes movements in a loop, kills it with kill -9 , reopens the file and
+runs the checker.
+Watch out: the checker must be read-only. Crash safety cannot be tested on an in-
+memory database; use a real file with its -wal and -shm files beside it.
+Done when: the checker passes on seeded data, fails on a deliberately corrupted copy,
+and 20 kill rounds pass.
+Day 26. Gate: ledger demo
+UI first: run the demo on real screens: Catalog, Locations, Stock tree and the Counter 1
+pick; the other screens are still mocks.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 25 of 41
+
+-- 25 of 41 --
+
+Hookup: write docs/guards.md listing each guard with the name of its direct-to-
+database failing test, note any contract changes, record the time to insert 1,000
+movements, and tag v1-ledger .
+Watch out: add no features today. Beware tests that pass only because the API
+refused first; every guard test must write straight to the database.
+Done when: at least 7 guards each have a failing-write test, npm run check passes, a
+3-minute recording exists, and the tag is pushed.
+8. Phase C, days 27 to 38: store hierarchy and inbound receiving
+By day 38 a delivery can be received, quarantined, shelved by bin, counted and written off,
+and every step is a ledger movement that the database has checked. The Receiving, Put-
+away, Stock, Expiry and Count screens run on real data.
+Day 27. Location admin and printable bin labels
+UI first: the Location setup screen with a print sheet of bin labels, each with its code in
+large text and a barcode.
+Hookup: a location.manage capability, deactivate and rename routes, GET
+/v1/locations/:id/label , and a barcode library such as JsBarcode for Code 128. A
+bin with stock cannot be deactivated ( LOCATION_HAS_STOCK ).
+Watch out: keep codes unique and zero-padded ( R03-S2 , not R3-S2 ) so they scan
+and sort. Print a test sheet and scan it before you laminate anything.
+Done when: you can build the full tree through the UI, deactivating a stocked bin is
+refused, and the sheet prints every bin with a scannable code.
+Day 28. Suppliers and the receipt header
+UI first: the header part of the goods receipt form on real data: supplier picker, invoice
+number, date.
+Hookup: goods_receipt (supplier, invoice number, status draft, received, put-away
+done), unique on supplier plus invoice number, the status transitions as a function in
+packages/domain , and routes to create and list drafts.
+Watch out: the same supplier invoice entered twice is the classic double receive, so
+the unique constraint is the defence, not the screen. Only a draft can be edited.
+Done when: a duplicate invoice is refused and each illegal status change has a failing
+test.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 26 of 41
+
+-- 26 of 41 --
+
+Day 29. Receipt lines become ledger entries
+UI first: receipt lines with live checks: expiry in the past blocked, MRP below cost
+warned, rejected quantity, entry in boxes with the base total shown.
+Hookup: goods_receipt_line (medicine, batch number, expiry, accepted and
+rejected quantity in base units, cost, MRP) and a receive command that creates any
+new batch and writes SUPPLIER to RECEIVING movements for the accepted quantity,
+all in one transaction. Rejected quantity stays on the line and never enters stock.
+Watch out: all lines or none. Receiving an existing batch again with a different MRP
+must stop and ask a person; do not overwrite.
+Done when: 10 boxes of 10 strips of 10 tablets give exactly 1,000 tablets in RECEIVING,
+a repeated key writes nothing new, and an expired line is refused.
+Day 30. Quarantine release and put-away
+UI first: the put-away list with a location picker and a suggested bin (one that already
+holds the medicine).
+Hookup: GET /v1/putaway summing RECEIVING balances, and a putAway command
+moving quantity from RECEIVING to a bin; that movement is the release, because only
+a SELLABLE bin can sell.
+Watch out: allow partial put-away into two bins. Flag any RECEIVING balance still open
+at day end, or stock will sit invisible.
+Done when: a batch cannot be picked before put-away and can be picked after, both
+proven by tests, and over-moving is refused by the ledger trigger.
+Day 31. Stock by location, bin detail and "where is it"
+UI first: the tree with a bin detail panel; searching R03-S2 or scanning a bin label jumps
+to that bin; a "where is this medicine" view.
+Hookup: GET /v1/stock/by-location/:id and GET /v1/stock/by-medicine/:id as
+single grouped queries, with zero balances hidden unless asked.
+Watch out: avoid one query per row. A shop can hold thousands of balance rows, so
+measure.
+Done when: "where is paracetamol" lists bins whose quantities add to the total, and
+the query takes under 50 ms on 5,000 seeded balances (record the real number).
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 27 of 41
+
+-- 27 of 41 --
+
+Day 32. Expiry board and write-off
+UI first: the board on real data with actions Move to expired rack and Write off.
+Hookup: the board query for expired, 30, 60 and 90 day windows with value at risk
+from cost in integer arithmetic; commands that move stock to an EXPIRED location or
+to WRITE_OFF with a reason, each needing a manager's PIN co-sign, behind a
+stock.writeoff capability.
+Watch out: value at risk uses cost, not MRP. Already expired stock is a loss, so show it
+apart from stock that is only at risk. The guard already blocks selling it, but it must also
+leave the shelf.
+Done when: the board matches hand-computed totals on fixtures, a write-off carries
+reason and user, and an expired batch still cannot be sold.
+Day 33. Blind count and adjustments
+UI first: a count sheet by bin that shows items without system quantities, then a
+variance screen after submission.
+Hookup: stock_count and lines recording the balance at count start; on submit,
+variance is counted minus (start balance plus net movements since start), posted as an
+ADJUSTMENT movement in the right direction with reason COUNT. A variance above a
+set value needs a manager's PIN co-sign; agree the value with the pharmacist.
+Watch out: a sale during a count is the pitfall that makes naive counts wrong, so
+measure against movements since start. Never update a balance; post a movement.
+Done when: a bin counted while a sale happens produces the right variance, and replay
+still equals balances.
+Day 34. Damaged, quarantine and a manual recall
+UI first: Mark damaged and Quarantine batch actions with a required reason; the batch
+row shows its new state.
+Hookup: seed holding racks QUAR-01 and DMG-01 ; commands that move stock there,
+with a batch-wide quarantine that loops over every bin in one transaction, behind
+stock.quarantine .
+Watch out: in this plan a recall is a manual batch quarantine. A quarantined batch must
+vanish from Counter 1 picks at once, so test that. Always record who and why.
+Done when: quarantining a batch removes it from picks, releasing it brings it back
+through a movement, and a missing reason is refused.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 28 of 41
+
+-- 28 of 41 --
+
+Day 35. Loose-strip stock end to end
+UI first: every stock view shows quantities as strips plus tablets, such as 9 strips + 7
+tablets.
+Hookup: scenario tests covering receive, sell loose, count and display; a trigger that
+blocks editing a unit conversion once any balance exists for that medicine.
+Watch out: changing a pack size after stock exists silently corrupts every quantity.
+Stock is only ever base units; the strips-and-tablets text is display.
+Done when: receiving 1 box of 100, selling 3 and reading 97 shows 9 strips + 7 tablets,
+and a conversion edit is refused.
+Day 36. Opening stock import
+UI first: a CSV import screen with an upload, a preview table with row errors, and a
+Commit button disabled until the file is clean or error rows are excluded.
+Hookup: parse with a CSV library, validate each row with zod, run the whole file once
+inside a transaction that rolls back for the preview, then commit as SUPPLIER to bin
+movements with reason OPENING; keep an import log.
+Watch out: use the same code path for preview and commit. Expect a UTF-8 byte-
+order mark on Bangla files, Excel-mangled dates and batch numbers that lose leading
+zeros.
+Done when: a 200-row file with 12 bad rows shows exactly those 12 by row number, a
+fixed file imports completely, and importing it again is refused.
+Day 37. End-to-end test
+UI first: add data-testid attributes to the receive, put-away, pick, count and expiry
+screens.
+Hookup: a Playwright test that boots the app on a temporary database file, then
+receives, puts away, picks, counts and reads the expiry board, then runs
+checkInvariants .
+Watch out: one fresh database per test, no sleeps, and keep the flow under 60
+seconds.
+Done when: the test passes in CI in headless mode and the invariants hold at its end.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 29 of 41
+
+-- 29 of 41 --
+
+Day 38. Gate: stock demo with a pharmacist
+UI first: a 20-minute session where a pharmacist or shop staff member receives and
+shelves a real supplier invoice, with you only watching.
+Hookup: tag v2-stock ; record how long a 20-line invoice takes; update the decision
+records for loose rounding and expiry inclusivity.
+Watch out: real invoices are messy, with missing batches and several MRPs. Write the
+mess down; do not fix it today.
+Done when: someone other than you receives and shelves a 20-line invoice (target
+under 15 minutes, a Proposed default to recalibrate), the end-to-end test is green, and
+the tag and a recording are pushed.
+9. Phase D, days 39 to 52: POS billing and hardware
+By day 52 a ticket goes from Counter 1 to Counter 2, is paid in cash or split, prints a
+receipt, and the shift closes blind with a Z-report; the stock ledger stays exact through
+crashes and conflicts. The roles used here are the Pharmacist preset at Counter 1 and the
+Cashier at Counter 2, plus a manager who closes and releases.
+Day 39. Ticket state machine and the real Counter 1
+UI first: the Counter 1 ticket panel on real data with the states draft, sent, claimed by
+someone, and cancelled.
+Hookup: dispense_ticket and its lines (medicine, intended batch, location, quantity
+in base units), a status function covering draft, sent, claimed, paid and cancelled, and
+routes to create, send and cancel. Capabilities: ticket.create for the Pharmacist
+preset, sale.create for the Cashier. A ticket line for a prescription or controlled
+medicine can only be added by a user with the pharmacist credential (capability
+rx.dispense), and the ticket records who.
+Watch out: a ticket is not a sale and moves no stock. Its total is an estimate; the server
+prices again at finalise.
+Done when: a paid ticket cannot go back to draft, a ticket is built from the real pick,
+and the client sends no price the server trusts.
+Day 40. Realtime with server-sent events
+UI first: the Counter 2 queue updates live, with a Live or Reconnecting indicator.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 30 of 41
+
+-- 30 of 41 --
+
+Hookup: GET /v1/stream as an event stream; each message carries the event
+sequence number as its id, and a returning client's Last-Event-ID replays missed
+events from the event table; a comment heartbeat every 15 seconds; events
+ticket.sent , ticket.claimed , ticket.paid . Delete the BroadcastChannel mock.
+Watch out: treat an event as a hint and refetch, because delivery can repeat. Turn off
+response compression on this route, and use cookie sign-in because EventSource
+cannot set headers.
+Done when: restarting the server while Counter 2 is open shows a ticket sent during
+the outage exactly once, and the indicator turns amber within 20 seconds of an outage.
+Day 41. The finalise-sale command
+UI first: the Pay flow on real data through to a success screen with the invoice number.
+Hookup: finaliseSale in one transaction: check the ticket is claimed by this user, re-
+run the pick for each line, insert the invoice, lines with snapshots, payments and bin-to-
+CUSTOMER movements, mark the ticket paid, append a row to a new append-only
+dispensing_register table for each prescription or controlled line (medicine, batch,
+quantity, pharmacist, invoice, time), apply the discount limit by role (Cashier up to 3
+percent, Branch Manager up to 10 percent, the master's Proposed defaults; above the
+limit a manager types a PIN), write the event row and the idempotency record, and
+take the invoice number from a counter row updated in the same transaction.
+Watch out: a counter inside the transaction keeps invoice numbers gapless, because a
+rollback also rolls the counter back. The server computes every price from batch MRP;
+it never trusts the client.
+Done when: balances fall by the exact base quantity, replay equals balances, and a
+failure injected mid-transaction leaves nothing behind.
+Day 42. Concurrency and the re-pick conflict
+UI first: Counter 2 shows "Stock changed; Counter 1 must pick again", and Counter 1
+shows a banner on the returned ticket.
+Hookup: a needs_repick status and a STOCK_CHANGED code listing the affected lines;
+a two-session test where two tickets want the last box.
+Watch out: do not hold locks across screens, and do not silently swap in another batch.
+The dispenser physically picked a specific strip, so a different batch must go back
+through Counter 1.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 31 of 41
+
+-- 31 of 41 --
+
+Done when: the first ticket pays, the second gets the conflict, no balance goes
+negative, and Counter 1 sees the reason.
+Day 43. Loose sales end to end
+UI first: the whole Counter 1 to Counter 2 path with loose tablets: the bill shows "3
+tablets" and its price.
+Hookup: finalise computes each line total as the floor of quantity times pack MRP
+divided by pack size, less any discount; the MRP guard passes by construction. A table
+of cases covers 1, 3 and 9 tablets.
+Watch out: customers expect round numbers, so print the rounding rule on a sign, not
+on the receipt. Decide whether loose tablets can be returned; the plan assumes they
+cannot.
+Done when: the table matches hand calculation and selling 1 tablet leaves 99 in a 100-
+unit box.
+Day 44. Payments and split money
+UI first: the split panel on real data, remainder auto-fill, cash tender and change. Credit
+stays visible but disabled with a Later tooltip.
+Hookup: payment rows by method with a reference required for card and wallet,
+validateSplit(total, payments) in the domain, and fast-check property tests: any
+random split sums to the total and change is never negative and only comes from cash.
+Wallet references are saved as unmatched until a person matches them.
+Watch out: a card payment can never exceed what is owed. No floats, ever.
+Done when: 1,000 property runs pass, the API refuses a split that does not sum, and a
+missing reference is refused.
+Day 45. Returns
+UI first: a Return screen: find an invoice by number or scan, choose lines and
+quantities, give a reason, refund to the original method.
+Hookup: sale_return and lines; the Cashier starts a return and a manager's PIN co-
+sign approves it; the movement goes from CUSTOMER to a quarantine bin RET-01 , not
+back to a shelf; a manager releases it after inspection through a normal put-away; a
+sale.return capability; a return window kept as a constant.
+Watch out: returned medicine must not go straight back on the shelf. Cap the total
+returned across several partial returns at the quantity sold.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 32 of 41
+
+-- 32 of 41 --
+
+Done when: returning more than sold is refused, returned stock sits in RET-01 and
+does not appear in picks, and replay equals balances.
+Day 46. Receipt printing
+UI first: the final receipt layout in English and Bangla: shop header, invoice number,
+date, lines, totals, payments, change, and a DUPLICATE mark on reprints.
+Hookup: GET /v1/sales/:id/receipt , print CSS with @page { size: 80mm auto;
+margin: 0 } , a bundled Bangla-capable font file, the strings in JSON, and Chrome
+started with --kiosk-printing so the print dialog is skipped.
+Watch out: bundle the font; a CDN font fails offline. A browser preview is not thermal
+paper, so Day 48 checks the real printer. A reprint writes an event.
+Done when: the receipt prints as one 80 mm column in both languages in Chrome and a
+reprint shows DUPLICATE and is recorded.
+Day 47. Barcode scanner
+UI first: a scan listener on Counter 1 that adds a line, an "unknown barcode, add it?"
+flow, and bin-label scanning on the stock screens.
+Hookup: a barcode table mapping a code to a medicine and unit, GET
+/v1/barcodes/:code , a check-digit validator for EAN-13, and a keystroke-burst
+detector that treats keys arriving under about 30 ms apart and ending in Enter as a
+scan.
+Watch out: a normal input box eats scanner keystrokes, and a keyboard set to Bangla
+turns the digits into the wrong characters. A box and a strip carry different barcodes;
+map each to its own unit. Do not parse batch and expiry from GS1 codes in this sprint.
+Done when: 20 scans in a row add 20 lines with none lost, and an unknown or wrong-
+length code shows the right flow.
+Day 48. Hardware day
+UI first: no new screens; fix what the real devices expose.
+Hookup: test the real scanner and receipt printer on the shop's PC and browser: paper
+width, margins, Bangla rendering, delay, default printer. If a drawer hangs off the
+printer, try the kick. Stretch: send raw ESC/POS bytes with a small script.
+Watch out: bring a USB hub and a spare cable, and test on the real operating system. If
+you cannot get hardware this week, borrow a printer and record the gap as a risk in
+section 11.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 33 of 41
+
+-- 33 of 41 --
+
+Done when: a Bangla receipt prints legibly on the real printer, a real product scans, and
+docs/hardware.md lists what you found.
+Day 49. Shifts and cash events
+UI first: shift open with a counted float, cash drop with a co-signer, paid-in, paid-out
+and no-sale.
+Hookup: shift (user, counter, opened, float, status open, closing, closed),
+cash_event (type, amount, reason, user, co-signer), a partial unique index allowing
+one open shift per counter, and sales attached to a shift.
+Watch out: the co-signer types their own PIN at the terminal and must be a different
+user. A cashier without an open shift cannot sell.
+Done when: a sale without an open shift is refused with NO_OPEN_SHIFT , a second
+open shift on one counter is refused, and a drop needs a different user's PIN.
+Day 50. Blind close and Z-report
+UI first: the blind close and a printable Z-report on real data.
+Hookup: POST /v1/shifts/:id/close takes the counted denominations; the server
+computes expected as float plus cash sales minus cash refunds minus drops plus paid-
+in minus paid-out, and only the response reveals it. An immutable z_report row keeps
+totals by payment method and counts of returns and no-sales. A day view sums every
+closed shift of the business date into one end-of-day Z-report.
+Watch out: hiding the number includes list endpoints and the live stream, not only the
+close screen. Always ask for a reason when variance is not zero.
+Done when: a hand-calculated fixture matches, a Cashier token never receives
+expected cash before submit on any route (tested), and a closed shift refuses sales.
+Day 51. Timed run and polish
+UI first: keyboard shortcuts and focus order for both counters; the screen never loses
+focus after a scan or a payment.
+Hookup: log timings, check EXPLAIN QUERY PLAN on pick and finalise, add the missing
+indexes, and run 20 timed sales with someone who is not a developer on a database
+seeded with about 5,000 batches and 20,000 movements.
+Watch out: do not optimise by guess. The hesitation of the person using it tells you
+more than the stopwatch. Internal budgets of about 100 ms for a pick and 300 ms for
+finalise keep the master's targets of 1 s scan-to-line and 2 s finalise reachable; treat
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 34 of 41
+
+-- 34 of 41 --
+
+both as Proposed defaults.
+Done when: timings and the 20-sale run are recorded and the top three friction points
+are fixed.
+Day 52. Gate: two-counter crash and conflict tests
+UI first: a 30-minute simulated trading session in two browser windows with a re-pick,
+a return and a held ticket.
+Hookup: automated tests run 20 times each: kill -9 during finalise, the same finalise
+key sent twice, the two-counter conflict, then checkInvariants . Tag v3-pos .
+Watch out: printing is separate from the commit. A power cut after commit and before
+print must give a reprint, never a second sale. Do not polish today.
+Done when: all four automated tests pass 20 times, invariants hold, a recording exists
+and the tag is pushed.
+10. Phase E, days 53 to 60: audit integrity and edge hardening
+By day 60 any edit to history is detectable, a backup restores and passes the same
+checks, the PC survives power cuts and a wrong clock, and a stranger can start the whole
+system from the README. This phase adds no features.
+Day 53. The audit chain
+UI first: the audit log viewer on real data: who, what, when, which record, and a short
+summary.
+Hookup: audit_log (sequence, time, user, action, entity, canonical payload,
+prev_hash , hash ), a canonicalJson function (sorted keys, fixed number format) and
+SHA-256 from node:crypto , written inside every command's transaction by extending
+runCommand . Triggers make the table append-only and require prev_hash to equal the
+hash of the previous row; the first row uses 64 zeros.
+Watch out: SQLite cannot compute the hash, so the app does and the trigger only
+enforces the link. Never put a PIN or secret in a payload. If the audit write fails, the
+business write must roll back with it.
+Done when: a test over the list of commands shows each writes exactly one audit row,
+update and delete are refused, and a forged prev_hash is refused.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 35 of 41
+
+-- 35 of 41 --
+
+Day 54. Verify and tamper tests
+UI first: the Verify page: a green "chain intact through row N" or a red "broken at row K,
+and why".
+Hookup: verifyAudit(db) recomputes every hash and link and reports the first
+break, exposed as npm run audit:verify . Tests on a copy with the triggers dropped:
+flip one byte, delete a middle row, reorder two rows, truncate the tail. Print the latest
+hash (the audit head) on every Z-report and store it in each backup manifest.
+Watch out: a chain alone cannot see rows cut off the end, which is why the head hash
+is anchored on paper and in backups. Make verification incremental from a saved
+checkpoint once it takes long.
+Done when: all four tampering cases are detected, truncation is caught against the
+anchored head, and the time to verify 100,000 rows is recorded.
+Day 55. Capability matrix and security events
+UI first: a Users and roles screen: create a user, assign a role, reset a PIN, with the
+capability list shown read-only and clear refusal states.
+Hookup: the Day 24 table-driven matrix test completed with every capability added
+since, covering every role and refusal; audit rows for sign-in, failed sign-in, lockout, PIN
+reset and role change; a user.manage capability held by managers only.
+Watch out: the last Owner cannot be locked or deleted. A PIN reset needs a manager
+and always leaves an audit row. Shared counter PINs defeat the audit trail.
+Done when: the matrix is green, locking the only Owner is refused, and each security
+event has an audit row.
+Day 56. Backups and the restore drill
+UI first: a backup tile on the System check page: last backup time and size, last restore
+test result, red after 24 hours.
+Hookup: a nightly job using better-sqlite3 's online backup() to a dated file plus a
+SHA-256 manifest, keeping 14 days and copying to a second location; a restore.js
+that restores into a fresh folder, then runs checkInvariants and verifyAudit .
+Watch out: copying the .db file while WAL is active can give a corrupt copy, so use the
+backup API. A backup on the same disk is not safe, and a backup never restored is only
+a hope.
+Done when: a restore into an empty folder passes both checks, a deleted backup is
+noticed, and the tile turns red when you simulate 25 hours without one.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 36 of 41
+
+-- 36 of 41 --
+
+Day 57. Power cuts, bad clocks and full disks
+UI first: a start-up self-check screen (checking, OK, needs attention) with a plain next
+action, and a clear banner when the server is down.
+Hookup: set synchronous=FULL and record why; on start run quick_check and
+checkInvariants and refuse to open for trading if either fails; store the latest event
+time and block sales if the clock reads more than 5 minutes behind it until a manager
+confirms; shut down cleanly on SIGTERM; a 50-round kill -9 test with writes in
+flight.
+Watch out: never keep the database in a synced folder such as OneDrive; it corrupts.
+Antivirus can lock the file. Test a full disk on a small temporary volume and check that
+writes fail cleanly.
+Done when: 50 kill rounds pass, a clock set back one hour blocks sales with a clear
+message, and the full-disk test fails safely with no corruption.
+Day 58. Packaging and offline start
+UI first: the production build, with the offline wording "Server not reachable" and no
+calls to any CDN.
+Hookup: one command, npm run start:prod , makes Express serve the built screens
+and the API from one port; a config file for shop name, counter names and data path;
+logs to a rotating file with no patient or customer data; start-up on boot through
+Windows Task Scheduler or a systemd unit, depending on your shop's OS; Counter 2 on
+a second PC opens the first PC's address on the local network. Write docs/run.md .
+Watch out: serving on the shop network exposes the API to everyone on it. That is
+acceptable only with sign-in required and guest Wi-Fi separated, and it is plain HTTP in
+this version; write that down as a known gap. Test with the router's internet unplugged.
+Done when: both counters complete a sale with no internet, a reboot starts the server
+by itself, and someone following only docs/run.md gets it running.
+Day 59. Full-day rehearsal
+UI first: seed a realistic shop (about 300 medicines, 800 batches, 60 bins) and play a
+full day: open a shift, receive two invoices, put away, sell 30 tickets with loose, split
+payments, two conflicts and two returns, count a rack, write off expired stock, close
+blind, and print the Z-report.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 37 of 41
+
+-- 37 of 41 --
+
+Hookup: script as much as you can with Playwright and API calls, finish with
+checkInvariants , verifyAudit and a backup restore, and log every bug with a
+severity.
+Watch out: add no features. Let a non-developer play the cashier for an hour and note
+each time they ask a question.
+Done when: the scripted day completes with all three checks green, the open bug list
+holds no data-integrity bug, and at most 5 known usability issues are listed.
+Day 60. Final gate
+UI first: record a 10-minute walkthrough of the five flows: dispense and bill, receive and
+put away, count and expire, close the shift, verify the audit.
+Hookup: the README covers run, test, backup and restore; docs/guards.md ,
+docs/api.md and the decision records are current; tag v1-sprint ; write a retro
+comparing hours used with this plan, by phase.
+Watch out: this is a parallel run on throwaway data. Encryption, an installer, approvals
+and sync are not built, and a paying shop needs all of them.
+Done when: npm ci && npm test && npm run check && npm run audit:verify is
+green on a clean clone, the recording and retro exist, and the tag is pushed.
+11. Cut list, risks and what comes after day 60
+If you are more than 2 days behind at a gate, cut from the top of this list and never from
+the bottom. The guard tests, the invariant checker, blind close, backup with restore and
+the crash tests are what make this a ledger and not a demo, so they are never cut.
+11.1 Cut list, in order
+Cut 	Day 	What you lose 	Do instead
+Raw ESC/POS printing
+and the cash drawer
+48
+stretch
+Silent drawer kick 	Browser print with --kiosk-
+printing
+Bin label barcodes 	27 part 	Scanning bin labels Type the bin code
+Opening stock CSV
+import
+36 	Fast loading of
+existing stock
+Enter 20 to 30 batches by
+hand or with a seed script
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 38 of 41
+
+-- 38 of 41 --
+
+11.2 Risks
+Cut 	Day 	What you lose 	Do instead
+Users and roles screen 	55 UI
+part
+Managing users in
+the app
+Create users with a seed
+script
+Returns 	45 	Refund flow 	Reverse by a manager
+adjustment with a reason
+Playwright end-to-end
+tests
+37 	Browser-level
+regression check
+Keep the API-level flow test
+Risk 	Early signal 	Response
+better-sqlite3 will not
+install on the shop PC's
+operating system
+The Day 1 smoke test fails 	Fix it that day: build tools, or
+WSL2 on Windows. Choose
+the shop OS before Day 58
+Phase A turns into pixel
+polish
+Day 9 starts with Day 8
+unfinished
+Freeze visuals, skip the audit
+viewer mock on Day 11 and
+build it for real on Day 53,
+keep contracts the priority
+No pharmacist to watch or
+test with
+No visit booked by Day 3 	Ask three people; if none,
+record one phone call as a
+scenario script. Days 12, 38
+and 48 need a real person
+and real hardware
+A rule is wrong in law or
+practice (loose rounding,
+expiry inclusive, receipt
+fields)
+A pharmacist disagrees 	Each is a decision record to
+confirm; the compliance
+review comes before any
+paying shop
+Code you cannot explain 	You cannot say what a
+trigger does without reading
+it
+Write the failing test first
+and a three-line note per
+trigger; your resume says
+you verify AI output, and this
+makes it checkable
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 39 of 41
+
+-- 39 of 41 --
+
+11.3 After day 60: where you stand in the 15-phase plan
+Risk 	Early signal 	Response
+Burnout from 60 sessions 	You miss two sessions in a
+row
+Sixty sessions at six a week
+is about ten weeks. Plan one
+day off and stretch the
+calendar, not the hours
+The plan is denser than 180
+hours for a first ledger build
+The Phase B gate lands after
+Day 30, or Phase A used
+more than 42 hours
+Decide at the Day 26 gate,
+not at Day 50: apply the cut
+list at once and, if you are
+still over, move Phase E to a
+second sprint of 8 to 10
+sessions. Never trade away
+the guard tests or the crash
+tests to save time.
+15-phase PRD 	State after this sprint 	Still to do
+P1 Ledger core, P2 Sign-in
+and capabilities
+Done, with bin-level
+locations
+Port any extra guards from the
+master's 26 tests
+P3 Counter sale, P4 Stock
+workbench
+Done, plus the two-
+counter ticket pipeline
+Update the PRD to describe the
+pipeline
+P5 Shifts, payments, blind
+close
+Done except credit 	Credit with a customer limit
+P6 Approvals and manager
+console
+Not started 	Approval requests, live manager
+tiles, day close
+P7 Work queue and rules 	Not started 	Ranked tasks, reorder drafts
+P8 Events, outbox, replay 	The event table exists
+from Day 23
+Outbox, contracts per event,
+rebuild test
+P9 to P14 	Not started 	Sync, Owner and Super Admin
+apps, remote approvals,
+encryption and installer,
+standby
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 40 of 41
+
+-- 40 of 41 --
+
+A sensible order from here is a parallel run on throwaway data for two weeks, then P6 and
+P8, and the P13 hardening gate before any paying shop. The 15-phase document stays the
+long plan; update its sizes from your day-60 retro.
+11.4 Open questions for you
+Which operating system does the first shop's counter PC run? It decides Day 58 and
+the install notes.
+Do you have a pharmacist or shop you can sit with before Day 12? Your Day 1
+pharmacist questions need real answers.
+Is this project yours or Okobiz's? It decides who owns the code and who can offer a
+pilot shop.
+60-Day Build Roadmap: Pharmacy SaaS, Shop Edge First, 3 Hours a Day
+Page 41 of 41
+
+-- 41 of 41 --
+

@@ -1,0 +1,798 @@
+<USER_REQUEST>
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dhaka Pharma POS - ঢাকা ফার্মা বিলিং টার্মিনাল</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            pharma: {
+              50: "#f0fdf9",
+              100: "#ccfbf1",
+              600: "#0d9488",
+              700: "#0f766e",
+              800: "#115e59",
+              900: "#134e4a",
+              dark: "#064e3b"
+            },
+            bkash: "#E2136E",
+            nagad: "#E34E26"
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    @layer base {
+      body {
+        -webkit-font-smoothing: antialiased;
+        background-color: #f1f5f9;
+        color: #0f172a;
+      }
+    }
+    /* Compact scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-100 font-sans text-slate-800 antialiased flex flex-col justify-between selection:bg-teal-700 selection:text-white">
+<!-- TOP HEADER BAR: Real-world Bangladesh Pharmacy Hospital Grade Header -->
+<header class="bg-pharma-800 text-white border-b-2 border-pharma-900 shadow-sm sticky top-0 z-40 select-none"><div class="px-4 py-2 flex items-center justify-between gap-4">
+<!-- Brand & Branch Identity -->
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-white text-pharma-800 font-extrabold flex items-center justify-center border border-teal-200 shadow-inner">
+<span class="material-symbols-outlined text-[26px] text-pharma-700">local_pharmacy</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h1 class="text-base font-bold tracking-tight text-white flex items-center gap-1.5 leading-none">
+<span class="font-bold">ঢাকা ফার্মা</span>
+<span class="text-xs text-teal-200 font-normal">|</span>
+<span class="text-teal-50 font-semibold tracking-normal text-sm">Dhaka Pharma Ltd.</span>
+</h1>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-900 text-teal-200 border border-teal-700 uppercase">
+          DGDA Reg: 142/DHK/2019
+        </span>
+</div>
+<div class="flex items-center gap-2 text-xs text-teal-100 mt-1">
+<span class="font-medium text-white flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-teal-300">storefront</span>
+          Dhanmondi Branch - Store #02 | Terminal 01 (Clinical Dispensing)
+        </span>
+<span>•</span>
+<span class="text-teal-200">Rx Token: <strong class="font-mono text-white">TK-1086</strong></span>
+</div>
+</div>
+</div>
+<!-- Center: Edge Status & Quick Station Switch -->
+<div class="hidden lg:flex items-center gap-3">
+<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-emerald-900/90 border border-emerald-500/50 text-emerald-100 text-xs shadow-inner">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+<span class="font-bold tracking-wide text-[11px] uppercase">Offline Edge Engine Active</span>
+<span class="text-emerald-300 font-mono text-[11px] font-semibold">• SQLite Local 100% Synced</span>
+</div>
+<div class="flex items-center gap-1 bg-pharma-900/80 border border-teal-700/60 rounded px-2 py-0.5 text-[11px]">
+<span class="text-slate-300 text-[10px]">Switch:</span>
+<a class="px-1.5 py-0.5 bg-teal-800 hover:bg-teal-700 text-teal-100 rounded font-mono font-bold text-[10px] border border-teal-600 transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[12px]">point_of_sale</span> Counter 2 [F2]
+      </a>
+<a class="px-1.5 py-0.5 bg-pharma-800 hover:bg-teal-700 text-teal-200 rounded font-medium text-[10px] transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[12px]">dashboard</span> Manager
+      </a>
+</div>
+</div>
+<!-- Pharmacist, Shift & Live Clock -->
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="flex items-center justify-end gap-1.5 text-xs text-white font-semibold">
+<span class="material-symbols-outlined text-[15px] text-teal-300">badge</span>
+<span>Pharm. Tanvir Ahmed, B.Pharm</span>
+<span class="text-[10px] px-1.5 py-0.2 bg-teal-700 text-teal-100 rounded font-normal font-mono">Reg: A-14928</span>
+</div>
+<div class="text-[11px] text-teal-200 flex items-center justify-end gap-2 font-mono mt-0.5">
+<span>Terminal 01 (Dispensing)</span>
+<span>•</span>
+<span class="text-white font-bold" id="live-clock">23:21:55 BST</span>
+</div>
+</div>
+<div class="flex items-center gap-1 border-l border-teal-700 pl-3">
+<button class="p-1.5 text-teal-100 hover:text-white hover:bg-pharma-700 rounded transition-colors text-xs flex items-center gap-1 border border-teal-600/50" title="Day Closing &amp; Shift Summary">
+<span class="material-symbols-outlined text-[17px]">calculate</span>
+<span class="hidden sm:inline text-[11px]">Shift End</span>
+</button>
+<button class="p-1.5 text-teal-100 hover:text-white hover:bg-pharma-700 rounded transition-colors" title="Lock Terminal">
+<span class="material-symbols-outlined text-[17px]">lock</span>
+</button>
+</div>
+</div>
+</div></header>
+<!-- SECONDARY ACTION & SHORTCUT SUB-NAV (For fast clickers) -->
+<div class="bg-white border-b border-slate-300 px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs"><div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1 text-slate-700 font-medium">
+<span class="material-symbols-outlined text-[16px] text-pharma-700">clinical_notes</span>
+    Current Station: <strong class="text-slate-900 font-bold">Counter 1 — Pharmacist Dispensing &amp; Rx Verification</strong>
+</span>
+<span class="text-slate-300">|</span>
+<span class="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 font-mono text-[11px]">
+<span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+    Connected to Counter 2 (Cashier Billing): <strong>READY (Socket LAN 127.0.0.1:8080)</strong>
+</span>
+</div>
+<div class="flex items-center gap-1.5 font-mono text-[11px] overflow-x-auto">
+<div class="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
+<span class="text-pharma-700 font-bold">[F2]</span><span>Search/Barcode</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
+<span class="text-pharma-700 font-bold">[F3]</span><span>Generic/Substitutes</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
+<span class="text-pharma-700 font-bold">[F4]</span><span>Stock/Rack Locator</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
+<span class="text-pharma-700 font-bold">[F7]</span><span>Rx Scan / OCR</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-teal-50 border border-teal-300 rounded text-teal-800 font-semibold">
+<span class="text-teal-700 font-bold">[F8]</span><span>Shelf Put-Away</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 bg-emerald-600 text-white rounded font-bold shadow-xs">
+<span>[F12]</span><span>Send Ticket</span>
+</div>
+</div></div>
+<!-- MAIN POS WORKSPACE: DENSE ERGONOMIC SPLIT LAYOUT -->
+<main class="flex-1 p-3 grid grid-cols-12 gap-3 items-start max-w-[1920px] mx-auto w-full">
+<!-- LEFT COLUMN: Search, Categories & Rapid Product Dispense (7 Cols on desktop) -->
+<div class="col-span-12 lg:col-span-7 xl:col-span-7 flex flex-col gap-2.5">
+<!-- Fast Barcode & Medicine Multi-Search Box -->
+<div class="bg-white p-3 rounded border border-slate-300 shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between text-xs">
+<label class="font-bold text-slate-800 flex items-center gap-1.5" for="barcode-input">
+<span class="material-symbols-outlined text-pharma-700 text-[18px]">barcode_scanner</span>
+<span>দ্রুত অনুসন্ধান / Barcode or Medicine Search</span>
+<span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded font-mono">Brand / Generic / Company</span>
+</label>
+<div class="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
+<span>Press <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold text-slate-800">F2</kbd> to focus</span>
+<span>•</span>
+<span><kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold text-slate-800">ENTER</kbd> to add</span>
+</div>
+</div>
+<div class="relative flex items-center">
+<div class="absolute left-3 text-pharma-700 pointer-events-none flex items-center">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input autofocus="" class="w-full pl-10 pr-32 py-2.5 bg-slate-50 border border-slate-300 rounded text-slate-900 font-medium placeholder:text-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-pharma-700 focus:border-pharma-700" id="barcode-input" placeholder="Scan barcode or type 'Napa', 'Seclo', 'Azithromycin', 'Beximco'..." type="text"/>
+<div class="absolute right-2.5 flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-100 text-teal-800 border border-teal-300 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-teal-700 animate-pulse"></span>
+      BARCODE READY
+    </span>
+</div>
+</div>
+<!-- Fast Categorical Switcher -->
+<div class="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 border-t border-slate-200 text-xs">
+<button class="cat-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium whitespace-nowrap border border-slate-300">All</button>
+<button class="cat-btn active px-3 py-1 bg-pharma-700 text-white rounded font-medium whitespace-nowrap shadow-xs">⭐ Fast Moving / OTC</button>
+<button class="cat-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium whitespace-nowrap border border-slate-300">Gastric &amp; PPI</button>
+<button class="cat-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium whitespace-nowrap border border-slate-300">Antibiotics &amp; Schedule H</button>
+<button class="cat-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium whitespace-nowrap border border-slate-300">Cardio &amp; Diabetic</button>
+<button class="cat-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium whitespace-nowrap border border-slate-300">Respiratory &amp; Syrups</button>
+</div></div>
+<!-- Medicine Quick Grid: Realistic Pharmacy Inventory with Rack, Expiry, Batch & Unit Price -->
+<div class="grid grid-cols-2 xl:grid-cols-3 gap-2"><!-- Med Card 1: Napa Extra -->
+<div class="group bg-white p-2.5 rounded border border-slate-300 hover:border-pharma-700 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-[142px] relative bg-gradient-to-b from-white to-slate-50" onclick="addToCart('Napa Extra 500+65mg', 'Paracetamol + Caffeine', 'Beximco Pharmaceuticals', 'BX-4412', 'Dec 2026', 'Rack A-01, Sh-2, Box 4', 3.00, 'tablet', 480)">
+<div>
+<div class="flex items-start justify-between gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-bold text-slate-900 text-sm group-hover:text-pharma-700 leading-tight">Napa Extra</span>
+<span class="text-[9px] font-mono px-1 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded font-bold">DGDA</span>
+</div>
+<span class="px-1.5 py-0.2 bg-teal-50 border border-teal-200 text-teal-800 rounded text-[10px] font-mono font-medium">Tablet</span>
+</div>
+<p class="text-[11px] text-slate-600 font-medium truncate mt-0.5">Paracetamol 500mg + Caffeine 65mg</p>
+<p class="text-[10px] text-slate-500">Beximco Pharma Ltd.</p>
+</div>
+<div class="pt-1.5 border-t border-slate-200 text-[11px] flex flex-col gap-0.5">
+<div class="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+<span>📍 <strong class="text-slate-700">Rack A-01</strong>, Sh-2, Box 4</span>
+<span class="text-emerald-700 font-semibold">480 pcs (48 str)</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1 rounded border border-emerald-300">FEFO #1 • 12/26</span>
+<div class="text-right flex items-center gap-1">
+<span class="text-xs font-bold text-slate-900 font-mono">৳ 3.00/pc</span>
+<span class="text-[9px] bg-pharma-50 hover:bg-pharma-700 hover:text-white text-pharma-700 px-1.5 py-0.5 rounded border border-pharma-300 font-bold transition-colors">+ Dispense</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Med Card 2: Seclo 20mg -->
+<div class="group bg-white p-2.5 rounded border border-slate-300 hover:border-pharma-700 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-[142px] relative bg-gradient-to-b from-white to-slate-50" onclick="addToCart('Seclo 20mg Capsule', 'Omeprazole 20mg', 'Square Pharmaceuticals', 'SQ-8914', 'Aug 2026', 'Rack B-03, Box 14', 7.00, 'capsule', 210)">
+<div>
+<div class="flex items-start justify-between gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-bold text-slate-900 text-sm group-hover:text-pharma-700 leading-tight">Seclo 20mg</span>
+<span class="text-[9px] font-mono px-1 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded font-bold">DGDA</span>
+</div>
+<span class="px-1.5 py-0.2 bg-blue-50 border border-blue-200 text-blue-800 rounded text-[10px] font-mono font-medium">Capsule</span>
+</div>
+<p class="text-[11px] text-slate-600 font-medium truncate mt-0.5">Omeprazole BP 20mg Cap</p>
+<p class="text-[10px] text-slate-500">Square Pharmaceuticals Ltd.</p>
+</div>
+<div class="pt-1.5 border-t border-slate-200 text-[11px] flex flex-col gap-0.5">
+<div class="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+<span>📍 <strong class="text-slate-700">Rack B-03</strong>, Box 14</span>
+<span class="text-emerald-700 font-semibold">210 pcs</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1 rounded border border-emerald-300">FEFO #1 • 08/26</span>
+<div class="text-right flex items-center gap-1">
+<span class="text-xs font-bold text-slate-900 font-mono">৳ 7.00/pc</span>
+<span class="text-[9px] bg-pharma-50 hover:bg-pharma-700 hover:text-white text-pharma-700 px-1.5 py-0.5 rounded border border-pharma-300 font-bold transition-colors">+ Dispense</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Med Card 3: Tofen Syrup 100ml -->
+<div class="group bg-white p-2.5 rounded border border-slate-300 hover:border-pharma-700 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-[142px] relative bg-gradient-to-b from-white to-slate-50" onclick="addToCart('Tofen Syrup 100ml', 'Ketotifen Fumarate 1mg/5ml', 'Beximco Pharmaceuticals', 'BX-7740', 'Oct 2026', 'Rack S-01, Bottlerack 2', 85.00, 'bottle', 28)">
+<div>
+<div class="flex items-start justify-between gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-bold text-slate-900 text-sm group-hover:text-pharma-700 leading-tight">Tofen Syrup 100ml</span>
+<span class="text-[9px] font-mono px-1 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded font-bold">DGDA</span>
+</div>
+<span class="px-1.5 py-0.2 bg-amber-50 border border-amber-200 text-amber-800 rounded text-[10px] font-mono font-medium">Syrup</span>
+</div>
+<p class="text-[11px] text-slate-600 font-medium truncate mt-0.5">Ketotifen Fumarate 1mg/5ml</p>
+<p class="text-[10px] text-slate-500">Beximco Pharma Ltd.</p>
+</div>
+<div class="pt-1.5 border-t border-slate-200 text-[11px] flex flex-col gap-0.5">
+<div class="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+<span>📍 <strong class="text-slate-700">Rack S-01</strong>, Bottlerack 2</span>
+<span class="text-emerald-700 font-semibold">28 btl</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1 rounded border border-emerald-300">FEFO #1 • 10/26</span>
+<div class="text-right flex items-center gap-1">
+<span class="text-xs font-bold text-slate-900 font-mono">৳ 85.00/btl</span>
+<span class="text-[9px] bg-pharma-50 hover:bg-pharma-700 hover:text-white text-pharma-700 px-1.5 py-0.5 rounded border border-pharma-300 font-bold transition-colors">+ Dispense</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Med Card 4: Azithrocin 500 -->
+<div class="group bg-white p-2.5 rounded border border-slate-300 hover:border-pharma-700 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-[142px] relative bg-gradient-to-b from-white to-slate-50" onclick="addToCart('Azithrocin 500', 'Azithromycin 500mg', 'Incepta Pharmaceuticals', 'IN-1049', 'Feb 2026', 'Rack C-02, Box 11', 35.00, 'tablet', 64)">
+<div>
+<div class="flex items-start justify-between gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-bold text-slate-900 text-sm group-hover:text-pharma-700 leading-tight">Azithrocin 500</span>
+<span class="text-[9px] font-mono px-1 py-0.2 bg-rose-50 text-rose-800 border border-rose-200 rounded font-bold">Sched-H</span>
+</div>
+<span class="px-1.5 py-0.2 bg-rose-50 border border-rose-200 text-rose-800 rounded text-[10px] font-mono font-semibold">Tablet</span>
+</div>
+<p class="text-[11px] text-slate-600 font-medium truncate mt-0.5">Azithromycin 500mg Tab</p>
+<p class="text-[10px] text-slate-500">Incepta Pharmaceuticals</p>
+</div>
+<div class="pt-1.5 border-t border-slate-200 text-[11px] flex flex-col gap-0.5">
+<div class="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+<span>📍 <strong class="text-slate-700">Rack C-02</strong>, Box 11</span>
+<span class="text-emerald-700 font-semibold">64 tab</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono text-slate-500">Exp: Feb 2026</span>
+<div class="text-right flex items-center gap-1">
+<span class="text-xs font-bold text-slate-900 font-mono">৳ 35.00/tab</span>
+<span class="text-[9px] bg-pharma-50 hover:bg-pharma-700 hover:text-white text-pharma-700 px-1.5 py-0.5 rounded border border-pharma-300 font-bold transition-colors">+ Dispense</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Med Card 5: Sergel 20mg -->
+<div class="group bg-white p-2.5 rounded border border-slate-300 hover:border-pharma-700 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-[142px] relative bg-gradient-to-b from-white to-slate-50" onclick="addToCart('Sergel 20mg Capsule', 'Esomeprazole 20mg', 'Healthcare Pharma', 'HC-2108', 'Jul 2026', 'Rack B-04, Sh-1', 7.00, 'capsule', 340)">
+<div>
+<div class="flex items-start justify-between gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-bold text-slate-900 text-sm group-hover:text-pharma-700 leading-tight">Sergel 20mg</span>
+<span class="text-[9px] font-mono px-1 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded font-bold">DGDA</span>
+</div>
+<span class="px-1.5 py-0.2 bg-blue-50 border border-blue-200 text-blue-800 rounded text-[10px] font-mono font-medium">Capsule</span>
+</div>
+<p class="text-[11px] text-slate-600 font-medium truncate mt-0.5">Esomeprazole 20mg Capsule</p>
+<p class="text-[10px] text-slate-500">Healthcare Pharmaceuticals</p>
+</div>
+<div class="pt-1.5 border-t border-slate-200 text-[11px] flex flex-col gap-0.5">
+<div class="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+<span>📍 <strong class="text-slate-700">Rack B-04</strong>, Sh-1</span>
+<span class="text-emerald-700 font-semibold">340 pcs</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono text-slate-500">Exp: Jul 2026</span>
+<div class="text-right flex items-center gap-1">
+<span class="text-xs font-bold text-slate-900 font-mono">৳ 7.00/pc</span>
+<span class="text-[9px] bg-pharma-50 hover:bg-pharma-700 hover:text-white text-pharma-700 px-1.5 py-0.5 rounded border border-pharma-300 font-bold transition-colors">+ Dispense</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Med Card 6: Monas 10mg -->
+<div class="group bg-white p-2.5 rounded border border-slate-300 hover:border-pharma-700 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-[142px] relative bg-gradient-to-b from-white to-slate-50" onclick="addToCart('Monas 10mg Tablet', 'Montelukast 10mg', 'The Acme Laboratories', 'AC-3091', 'Nov 2025', 'Rack D-02, Box 5', 16.00, 'tablet', 95)">
+<div>
+<div class="flex items-start justify-between gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-bold text-slate-900 text-sm group-hover:text-pharma-700 leading-tight">Monas 10mg</span>
+<span class="text-[9px] font-mono px-1 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded font-bold">DGDA</span>
+</div>
+<span class="px-1.5 py-0.2 bg-purple-50 border border-purple-200 text-purple-800 rounded text-[10px] font-mono font-medium">Tablet</span>
+</div>
+<p class="text-[11px] text-slate-600 font-medium truncate mt-0.5">Montelukast 10mg Tab</p>
+<p class="text-[10px] text-slate-500">The Acme Laboratories Ltd.</p>
+</div>
+<div class="pt-1.5 border-t border-slate-200 text-[11px] flex flex-col gap-0.5">
+<div class="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+<span>📍 <strong class="text-slate-700">Rack D-02</strong>, Box 5</span>
+<span class="text-amber-700 font-semibold">Stock: 95 pcs</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] text-amber-700 bg-amber-50 px-1 rounded font-mono font-medium border border-amber-200">Exp: Nov 2025</span>
+<div class="text-right flex items-center gap-1">
+<span class="text-xs font-bold text-slate-900 font-mono">৳ 16.00/tab</span>
+<span class="text-[9px] bg-pharma-50 hover:bg-pharma-700 hover:text-white text-pharma-700 px-1.5 py-0.5 rounded border border-pharma-300 font-bold transition-colors">+ Dispense</span>
+</div>
+</div>
+</div>
+</div></div>
+<!-- Quick Shelf Helper & DGDA Drug Batch Verification Box -->
+<div class="bg-white p-3 rounded border border-slate-300 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs"><div class="flex flex-col gap-2 w-full">
+<div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded bg-teal-50 border border-teal-200 flex items-center justify-center text-pharma-700 font-bold">
+<span class="material-symbols-outlined text-[18px]">shelves</span>
+</div>
+<div>
+<span class="font-bold text-slate-800">Physical Rack Position Locator &amp; Generic Substitutes</span>
+<p class="text-slate-500 text-[11px]">Selected Item Store: <span class="font-mono font-semibold text-pharma-800">Room A • Section Gastric • Row 2 • Shelf 03</span></p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<span class="text-[10px] text-slate-500 block">DGDA Validation Protocol</span>
+<span class="text-emerald-700 font-mono text-[11px] font-bold">● Batch &amp; MRP Compliant (Gazette 2024-25)</span>
+</div>
+<button class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded text-xs font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">tune</span> Adjust Stock
+      </button>
+</div>
+</div>
+<!-- In-Stock Generic Substitutes Quick Comparison -->
+<div class="pt-2 border-t border-slate-200 grid grid-cols-3 gap-2 text-[11px] font-mono">
+<div class="p-1.5 rounded bg-slate-50 border border-slate-200 flex items-center justify-between">
+<div><span class="text-slate-900 font-bold font-sans">Seclo 20mg</span> <span class="text-[10px] text-slate-500">(Square)</span></div>
+<div class="font-bold text-slate-800">৳ 7.00 <span class="text-emerald-600 text-[10px]">210 in stock</span></div>
+</div>
+<div class="p-1.5 rounded bg-slate-50 border border-slate-200 flex items-center justify-between">
+<div><span class="text-slate-900 font-bold font-sans">Losectil 20mg</span> <span class="text-[10px] text-slate-500">(SK+F)</span></div>
+<div class="font-bold text-slate-800">৳ 7.00 <span class="text-emerald-600 text-[10px]">140 in stock</span></div>
+</div>
+<div class="p-1.5 rounded bg-slate-50 border border-slate-200 flex items-center justify-between">
+<div><span class="text-slate-900 font-bold font-sans">Proceptin 20</span> <span class="text-[10px] text-slate-500">(Beximco)</span></div>
+<div class="font-bold text-slate-800">৳ 6.50 <span class="text-emerald-600 text-[10px]">85 in stock</span></div>
+</div>
+</div>
+</div></div>
+</div>
+<!-- RIGHT COLUMN: Active Prescription Bill / Spreadsheet Cart (5 Cols on desktop) -->
+<div class="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2">
+<div class="bg-white rounded border border-slate-300 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[640px]">
+<!-- Cart & Patient Information Header -->
+<div class="p-3 bg-slate-50 border-b border-slate-300 rounded-t flex flex-col gap-2"><div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-pharma-700 text-[20px]">checklist</span>
+<h2 class="font-bold text-slate-900 text-sm">ফার্মাসিস্ট পিক লিস্ট / FEFO Pick List &amp; Rx Queue</h2>
+<span class="px-2 py-0.5 rounded-full text-xs font-bold font-mono bg-teal-100 text-teal-800 border border-teal-300" id="cart-item-count">3 items</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="text-[11px] font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-300">Ticket #TK-1086</span>
+<button class="text-slate-500 hover:text-rose-600 px-1.5 py-0.5 rounded hover:bg-rose-50 text-xs font-medium flex items-center gap-0.5" onclick="clearCart()" title="Clear Pick List">
+<span class="material-symbols-outlined text-[15px]">delete_sweep</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 text-xs">
+<div class="relative">
+<span class="block text-[10px] text-slate-500 font-medium mb-0.5">Patient Details:</span>
+<input class="w-full text-xs py-1 px-2 rounded bg-white border border-slate-300 text-slate-800 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-pharma-700" placeholder="Patient Name &amp; Contact" type="text" value="Mrs. Nusrat Jahan (01712-349811)"/>
+</div>
+<div class="relative">
+<span class="block text-[10px] text-slate-500 font-medium mb-0.5">Prescriber &amp; Institution:</span>
+<input class="w-full text-xs py-1 px-2 rounded bg-white border border-slate-300 text-slate-700 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-pharma-700" placeholder="Prescribed By (Doctor)" type="text" value="Prof. Dr. M. Rahman (BSMMU) • Token #TK-1086"/>
+</div>
+</div></div>
+<!-- Dense Table Header -->
+<div class="bg-slate-100 border-b border-slate-300 px-3 py-1.5 grid grid-cols-12 text-[11px] font-bold text-slate-600 uppercase tracking-wider select-none font-mono">
+<div class="col-span-1">SL</div>
+<div class="col-span-5">Item &amp; Batch</div>
+<div class="col-span-2 text-center">Qty</div>
+<div class="col-span-2 text-right">Rate(৳)</div>
+<div class="col-span-2 text-right">Total(৳)</div>
+</div>
+<!-- Cart Items Scrollable Table Area -->
+<div class="flex-1 overflow-y-auto divide-y divide-slate-200" id="cart-table-body"><!-- Cart Item 1: Napa Extra -->
+<div class="cart-item p-2.5 hover:bg-slate-50 transition-colors grid grid-cols-12 items-center gap-1 text-xs" data-price="3.00" data-qty="20">
+<div class="col-span-1 text-slate-400 font-mono text-[11px] font-bold">01</div>
+<div class="col-span-5 pr-1">
+<div class="font-bold text-slate-900 leading-tight truncate">Napa Extra 500+65mg</div>
+<div class="flex items-center flex-wrap gap-1 text-[10px] text-slate-500 font-mono mt-0.5">
+<span class="bg-emerald-50 text-emerald-700 border border-emerald-300 px-1 rounded font-bold">FEFO #1</span>
+<span class="bg-slate-200 px-1 rounded">B: BX-4412</span>
+<span>Exp: 12/26</span>
+<span class="text-teal-700 font-semibold">• Rack A-01, Sh-2</span>
+</div>
+</div>
+<div class="col-span-2 flex items-center justify-center">
+<div class="inline-flex items-center border border-slate-300 rounded bg-white shadow-xs">
+<button class="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold text-xs" onclick="updateQty(this, -1)">-</button>
+<input class="qty-field w-7 text-center font-mono font-bold text-xs p-0 border-0 focus:ring-0 text-slate-900" readonly="" type="text" value="20"/>
+<button class="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold text-xs" onclick="updateQty(this, 1)">+</button>
+</div>
+</div>
+<div class="col-span-2 text-right font-mono text-slate-700">3.00</div>
+<div class="col-span-2 text-right flex items-center justify-end gap-1 font-mono font-bold text-slate-900">
+<span class="item-subtotal">60.00</span>
+<button class="text-slate-400 hover:text-rose-600 ml-1" onclick="deleteRow(this)">
+<span class="material-symbols-outlined text-[15px]">close</span>
+</button>
+</div>
+</div>
+<!-- Cart Item 2: Seclo 20mg -->
+<div class="cart-item p-2.5 hover:bg-slate-50 transition-colors grid grid-cols-12 items-center gap-1 text-xs" data-price="7.00" data-qty="14">
+<div class="col-span-1 text-slate-400 font-mono text-[11px] font-bold">02</div>
+<div class="col-span-5 pr-1">
+<div class="font-bold text-slate-900 leading-tight truncate">Seclo 20mg Capsule</div>
+<div class="flex items-center flex-wrap gap-1 text-[10px] text-slate-500 font-mono mt-0.5">
+<span class="bg-emerald-50 text-emerald-700 border border-emerald-300 px-1 rounded font-bold">FEFO #1</span>
+<span class="bg-slate-200 px-1 rounded">B: SQ-8914</span>
+<span>Exp: 08/26</span>
+<span class="text-teal-700 font-semibold">• Rack B-03, Box 14</span>
+</div>
+</div>
+<div class="col-span-2 flex items-center justify-center">
+<div class="inline-flex items-center border border-slate-300 rounded bg-white shadow-xs">
+<button class="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold text-xs" onclick="updateQty(this, -1)">-</button>
+<input class="qty-field w-7 text-center font-mono font-bold text-xs p-0 border-0 focus:ring-0 text-slate-900" readonly="" type="text" value="14"/>
+<button class="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold text-xs" onclick="updateQty(this, 1)">+</button>
+</div>
+</div>
+<div class="col-span-2 text-right font-mono text-slate-700">7.00</div>
+<div class="col-span-2 text-right flex items-center justify-end gap-1 font-mono font-bold text-slate-900">
+<span class="item-subtotal">98.00</span>
+<button class="text-slate-400 hover:text-rose-600 ml-1" onclick="deleteRow(this)">
+<span class="material-symbols-outlined text-[15px]">close</span>
+</button>
+</div>
+</div>
+<!-- Cart Item 3: Tofen Syrup -->
+<div class="cart-item p-2.5 hover:bg-slate-50 transition-colors grid grid-cols-12 items-center gap-1 text-xs" data-price="85.00" data-qty="1">
+<div class="col-span-1 text-slate-400 font-mono text-[11px] font-bold">03</div>
+<div class="col-span-5 pr-1">
+<div class="font-bold text-slate-900 leading-tight truncate">Tofen Syrup 100ml</div>
+<div class="flex items-center flex-wrap gap-1 text-[10px] text-slate-500 font-mono mt-0.5">
+<span class="bg-emerald-50 text-emerald-700 border border-emerald-300 px-1 rounded font-bold">FEFO #1</span>
+<span class="bg-slate-200 px-1 rounded">B: BX-7740</span>
+<span>Exp: 10/26</span>
+<span class="text-teal-700 font-semibold">• Rack S-01, Bottles</span>
+</div>
+</div>
+<div class="col-span-2 flex items-center justify-center">
+<div class="inline-flex items-center border border-slate-300 rounded bg-white shadow-xs">
+<button class="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold text-xs" onclick="updateQty(this, -1)">-</button>
+<input class="qty-field w-7 text-center font-mono font-bold text-xs p-0 border-0 focus:ring-0 text-slate-900" readonly="" type="text" value="1"/>
+<button class="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold text-xs" onclick="updateQty(this, 1)">+</button>
+</div>
+</div>
+<div class="col-span-2 text-right font-mono text-slate-700">85.00</div>
+<div class="col-span-2 text-right flex items-center justify-end gap-1 font-mono font-bold text-slate-900">
+<span class="item-subtotal">85.00</span>
+<button class="text-slate-400 hover:text-rose-600 ml-1" onclick="deleteRow(this)">
+<span class="material-symbols-outlined text-[15px]">close</span>
+</button>
+</div>
+</div></div>
+<!-- Strict Financial Accounting / Calculations (Standard BD Pharmacy Rules) -->
+<div class="p-3 bg-slate-50 border-t border-slate-300 flex flex-col gap-2"><div class="space-y-1 text-xs border-b border-slate-200 pb-2">
+<div class="flex justify-between items-center text-slate-600">
+<span>Total Dispensed Items (3 items, 35 units):</span>
+<span class="font-mono font-bold text-slate-900" id="bill-subtotal">৳ 243.00</span>
+</div>
+<div class="flex justify-between items-center text-slate-600">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-emerald-600">verified</span>
+<span>Clinical Validation:</span>
+</span>
+<span class="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-300">
+      DGDA Validated: Batch &amp; MRP Compliant (Gazette 2024-25)
+    </span>
+</div>
+<div class="flex justify-between items-center text-slate-600 text-[11px]">
+<span>Target Settlement Station:</span>
+<span class="font-mono font-semibold text-pharma-800 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">
+      Target: Counter 02 (Cashier Desk) • Ready on LAN (127.0.0.1:8080)
+    </span>
+</div>
+</div>
+<div class="flex items-center justify-between bg-pharma-50 p-2.5 rounded border border-teal-300">
+<div>
+<span class="text-xs font-bold text-pharma-900 uppercase tracking-wide block">Est. Bill Total / প্রাক্কলিত বিল</span>
+<span class="text-[10px] text-teal-700 font-medium">Final discounts &amp; payment collected at Counter 2</span>
+</div>
+<div class="text-right">
+<span class="text-2xl font-black font-mono text-pharma-800" id="bill-grand-total">৳ 243.00</span>
+</div>
+</div>
+<div class="flex flex-col gap-2 pt-1">
+<button class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold tracking-wide rounded border border-emerald-800 shadow flex items-center justify-center gap-2 transition-all cursor-pointer" onclick="alert('Ticket #TK-1086 dispatched via Socket LAN to Counter 02 Cashier Billing!')">
+<span class="material-symbols-outlined text-[20px]">send_to_mobile</span>
+<span>[F12] Send Ticket to Counter 2 (Cashier Billing) →</span>
+</button>
+<div class="grid grid-cols-2 gap-2">
+<button class="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded border border-slate-300 flex items-center justify-center gap-1 transition-all" onclick="alert('Prescription Ticket #TK-1086 on HOLD.')">
+<span class="material-symbols-outlined text-[15px]">pause_circle</span>
+<span>Hold Prescription [F4]</span>
+</button>
+<button class="py-2 px-2.5 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold rounded border border-teal-300 flex items-center justify-center gap-1 transition-all" onclick="alert('Printing Pharmacist Pick Slip on Thermal Printer...')">
+<span class="material-symbols-outlined text-[15px]">receipt</span>
+<span>Print Pick Slip [F7]</span>
+</button>
+</div>
+</div></div>
+</div>
+</div>
+</main>
+<!-- HARDWARE & COMPLIANCE BOTTOM STATUS RIBBON -->
+<footer class="bg-white border-t border-slate-300 px-4 py-1.5 text-xs text-slate-600 select-none"><div class="flex flex-wrap items-center justify-between gap-3">
+<!-- Hardware Peripheral Indicators -->
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+<span class="font-medium text-slate-700">Barcode Scanner:</span>
+<span class="font-mono text-slate-900 font-semibold">Honeywell Voyager 1250g (USB HID - Connected)</span>
+</div>
+<span class="text-slate-300">|</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-teal-700">print</span>
+<span class="font-medium text-slate-700">Thermal Printer:</span>
+<span class="font-mono text-slate-900 font-semibold">Epson Thermal TM-T88VI (Ready)</span>
+</div>
+<span class="text-slate-300">|</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-emerald-600">sync_alt</span>
+<span class="font-medium text-slate-700">Receipt Sync:</span>
+<span class="font-mono text-slate-800 font-semibold">Instant Socket LAN (127.0.0.1:8080)</span>
+</div>
+</div>
+<!-- Compliance & Software Node Details -->
+<div class="flex items-center gap-3 text-[11px] text-slate-500 font-mono">
+<span class="text-slate-700 font-semibold">DGDA License: DA-DHK-2022-09418</span>
+<span>•</span>
+<span>Node: DHN-POS-01</span>
+<span>•</span>
+<span class="text-slate-700 font-semibold">Dhaka Pharma POS v4.2 Pro</span>
+</div>
+</div></footer>
+<!-- SCRIPT FOR FUNCTIONAL PHARMACY POS ACTIONS & KEYBOARD SHORTCUTS -->
+<script>
+    let currentDiscountPercent = 5;
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      const hrs = String(now.getHours()).padStart(2, '0');
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const secs = String(now.getSeconds()).padStart(2, '0');
+      const el = document.getElementById('live-clock');
+      if (el) el.innerText = `${hrs}:${mins}:${secs}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Recalculate bill
+    function calculateBill() {
+      const rows = document.querySelectorAll('#cart-table-body .cart-item');
+      let subtotal = 0;
+
+      rows.forEach((row, index) => {
+        // update SL
+        const sl = row.querySelector('.col-span-1');
+        if (sl) sl.innerText = String(index + 1).padStart(2, '0');
+
+        const price = parseFloat(row.getAttribute('data-price')) || 0;
+        const qty = parseInt(row.getAttribute('data-qty')) || 1;
+        const rowTotal = price * qty;
+        row.querySelector('.item-subtotal').innerText = rowTotal.toFixed(2);
+        subtotal += rowTotal;
+      });
+
+      const discount = (subtotal * currentDiscountPercent) / 100;
+      const rawPayable = subtotal - discount;
+      const roundedPayable = Math.round(rawPayable);
+      const roundingDiff = roundedPayable - rawPayable;
+
+      document.getElementById('bill-subtotal').innerText = '৳ ' + subtotal.toFixed(2);
+      document.getElementById('bill-discount').innerText = '-৳ ' + discount.toFixed(2);
+      document.getElementById('bill-round').innerText = (roundingDiff >= 0 ? '+৳ ' : '-৳ ') + Math.abs(roundingDiff).toFixed(2);
+      document.getElementById('bill-grand-total').innerText = '৳ ' + roundedPayable.toFixed(2);
+      document.getElementById('cart-item-count').innerText = rows.length + (rows.length === 1 ? ' item' : ' items');
+    }
+
+    function updateQty(btn, delta) {
+      const row = btn.closest('.cart-item');
+      let currentQty = parseInt(row.getAttribute('data-qty')) || 1;
+      currentQty += delta;
+      if (currentQty <= 0) {
+        row.remove();
+      } else {
+        row.setAttribute('data-qty', currentQty);
+        row.querySelector('.qty-field').value = currentQty;
+      }
+      calculateBill();
+    }
+
+    function deleteRow(btn) {
+      const row = btn.closest('.cart-item');
+      row.remove();
+      calculateBill();
+    }
+
+    function clearCart() {
+      if (confirm('Clear current prescription bill?')) {
+        const body = document.getElementById('cart-table-body');
+        body.innerHTML = `
+          <div class="p-8 text-center text-slate-400">
+            <span class="material-symbols-outlined text-4xl text-slate-300">shopping_basket</span>
+            <p class="text-xs mt-1">বিল খালি। ঔষধ যোগ করতে সার্চ বা বারকোড স্ক্যান করুন।</p>
+          </div>
+        `;
+        calculateBill();
+      }
+    }
+
+    function setDiscount(pct) {
+      currentDiscountPercent = pct;
+      [0, 5, 10].forEach(p => {
+        const btn = document.getElementById(`disc-${p}`);
+        if (p === pct) {
+          btn.className = "px-1.5 py-0.2 text-[10px] rounded border border-pharma-700 bg-pharma-700 text-white font-bold";
+        } else {
+          btn.className = "px-1.5 py-0.2 text-[10px] rounded border border-slate-300 bg-white hover:bg-slate-100";
+        }
+      });
+      calculateBill();
+    }
+
+    function addToCart(title, generic, manufacturer, batch, exp, rack, unitPrice, unitType, stock) {
+      const body = document.getElementById('cart-table-body');
+      
+      // If empty notice exists, clear it
+      if (body.querySelector('.material-symbols-outlined.text-4xl')) {
+        body.innerHTML = '';
+      }
+
+      // Check if already in cart
+      const rows = body.querySelectorAll('.cart-item');
+      for (let r of rows) {
+        if (r.querySelector('.col-span-5 .truncate').innerText.trim() === title) {
+          updateQty(r.querySelector('.qty-field'), 1);
+          return;
+        }
+      }
+
+      const row = document.createElement('div');
+      row.className = "cart-item p-2.5 hover:bg-slate-50 transition-colors grid grid-cols-12 items-center gap-1 text-xs";
+      row.setAttribute('data-price', unitPrice.toFixed(2));
+      row.setAttribute('data-qty', '1');
+      row.innerHTML = `
+        <div class="col-span-1 text-slate-400 font-mono text-[11px] font-bold">00</div>
+        <div class="col-span-5 pr-1">
+          <div class="font-bold text-slate-900 leading-tight truncate">${title}</div>
+          <div class="flex items-center gap-1 text-[10px] text-slate-500 font-mono mt-0.5">
+            <span class="bg-slate-200 px-1 rounded">B: ${batch}</span>
+            <span>Exp: ${exp}</span>
+          </div>
+        </div>
+        <div class="col-span-2 flex items-center justify-center">
+          <div class="inline-flex items-center border border-slate-300 rounded bg-white shadow-xs">
+            <button onclick="updateQty(this, -1)" class="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold text-xs">-</button>
+            <input type="text" value="1" class="qty-field w-7 text-center font-mono font-bold text-xs p-0 border-0 focus:ring-0 text-slate-900" readonly/>
+            <button onclick="updateQty(this, 1)" class="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold text-xs">+</button>
+          </div>
+        </div>
+        <div class="col-span-2 text-right font-mono text-slate-700">${unitPrice.toFixed(2)}</div>
+        <div class="col-span-2 text-right flex items-center justify-end gap-1 font-mono font-bold text-slate-900">
+          <span class="item-subtotal">${unitPrice.toFixed(2)}</span>
+          <button onclick="deleteRow(this)" class="text-slate-400 hover:text-rose-600 ml-1">
+            <span class="material-symbols-outlined text-[15px]">close</span>
+          </button>
+        </div>
+      `;
+      body.appendChild(row);
+      calculateBill();
+    }
+
+    function selectPayment(method) {
+      const grand = document.getElementById('bill-grand-total').innerText;
+      alert(`Payment Mode Selected: [${method}]\nAmount Payable: ${grand}\nReady to swipe/scan.`);
+    }
+
+    function holdBill() {
+      alert("Order placed on HOLD. Ticket #HOLD-03 created for Dhanmondi Branch Counter 02.");
+    }
+
+    function printAndPay() {
+      const grand = document.getElementById('bill-grand-total').innerText;
+      alert(`Finalizing Bill: ${grand}\nPrinting 80mm Invoice DP-DHN-2025-0842 on Epson TM-T88VI...\nOpening Cash Drawer...\nOrder committed to local SQLite queue.`);
+    }
+
+    // Keyboard Hotkey listener for real cashier speed
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        const input = document.getElementById('barcode-input');
+        if (input) { input.focus(); input.select(); }
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        holdBill();
+      } else if (e.key === 'F6') {
+        e.preventDefault();
+        selectPayment('Cash');
+      } else if (e.key === 'F9') {
+        e.preventDefault();
+        selectPayment('bKash / Nagad MFS');
+      } else if (e.key === 'F8') {
+        e.preventDefault();
+        selectPayment('Card');
+      } else if (e.key === 'F12') {
+        e.preventDefault();
+        printAndPay();
+      }
+    });
+
+    // Category button toggles
+    document.querySelectorAll('.cat-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.cat-btn').forEach(b => {
+          b.className = "cat-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium whitespace-nowrap border border-slate-300";
+        });
+        this.className = "cat-btn active px-3 py-1 bg-pharma-700 text-white rounded font-medium whitespace-nowrap shadow-xs";
+      });
+    });
+
+    // Initialize initial calculations
+    calculateBill();
+  </script>
+</body></html>
+here is the exact counter 1 UI match it in context till now of the project first do built quick features I will go slow & steady
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-31T01:21:58+06:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Turjoy\Desktop\Pharma_Soft\src\components\dispense\PrescriptionBasket.jsx (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- c:\Users\Turjoy\Desktop\Pharma_Soft\src\components\dispense\MedicineSearch.jsx (LANGUAGE_UNSPECIFIED)
+- c:\Users\Turjoy\Desktop\Pharma_Soft\src\components\cart\Cart.jsx (LANGUAGE_UNSPECIFIED)
+- c:\Users\Turjoy\Desktop\Pharma_Soft\src\stores\useCounterStore.js (LANGUAGE_UNSPECIFIED)
+- c:\Users\Turjoy\Desktop\Pharma_Soft\src\App.jsx (LANGUAGE_UNSPECIFIED)
+- c:\Users\Turjoy\Desktop\Pharma_Soft\src\components\queue\TicketQueue.jsx (LANGUAGE_UNSPECIFIED)
+</ADDITIONAL_METADATA>

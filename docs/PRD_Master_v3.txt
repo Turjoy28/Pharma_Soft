@@ -1,0 +1,3677 @@
+Pharmacy SaaS Platform — Master PRD &
+Architecture v3.0 (Role-Centered)
+Oct 11, 2026 · @Saif
+1. Executive summary
+v3.0 keeps the v2.0 core (batch ledger, rack locations, FEFO, offline-first) and adds what
+v2.0 lacked: a workspace built for each of the five roles, a maker-checker approval system
+that works with no internet, a task engine, and a platform control plane kept apart from
+tenant data. It also fixes nine defects found in the v2.0 SQL (Section 10.1).
+Status. Supersedes v2.0 Sections 3 (roles), 12 (architecture) and 14 (sync) in full. v2.0
+Sections 5 to 11 (store model, batch, procurement, sales, ledger, workflows, reports) stay
+valid unless this document amends them.
+1.1 The five-role promise
+Role 	Their one job 	Home screen 	What they get that
+competitors lack
+Super Admin
+(platform staff)
+Keep every tenant live,
+billed, current and
+supported without
+seeing their business
+data
+Fleet and
+tenant console
+Control plane with no
+read path to tenant data;
+staged releases that halt
+themselves; consented,
+time-boxed support
+sessions
+Owner / Admin 	Know money and risk in
+two minutes; control the
+shop from anywhere
+Owner cockpit
+(phone first)
+Morning brief in taka;
+approve by phone even
+when the shop is offline;
+profit from real batch
+cost
+Branch
+Manager
+Run today: people, cash,
+exceptions
+Branch live
+board
+Approval inbox with
+escalation; pharmacist-
+on-duty gate; day-close
+wizard with period lock;
+inspector-ready pack
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 1 of 74
+
+-- 1 of 74 --
+
+1.2 What changes from v2.0
+Role 	Their one job 	Home screen 	What they get that
+competitors lack
+Inventory
+Manager
+Right stock, right shelf,
+right expiry, right order
+Work queue 	Auto-built prioritised
+tasks showing taka at
+risk; blind receiving; ABC
+cycle counts; expiry-
+aware reorder
+Cashier 	Serve fast, take money
+correctly, close the shift
+balanced
+Counter
+terminal
+Keyboard-first invoice in
+under 2 s; blind cash
+counts; every override
+leaves a trail without
+slowing the queue
+Area 	v2.0 	v3.0
+Roles 	Nine flat roles; no Branch Manager Five persona workspaces; licensed-
+pharmacist credential kept separate
+from job role; Accountant and
+Inspector as external read-only
+guests
+Approvals 	Approver types PIN at the terminal;
+Owner approves day-end
+Policy-driven ladder: terminal,
+Branch Manager, remote Owner
+(push or offline code), delegation,
+escalation, no self-approval
+Daily work 	Reports and lists 	Task engine: each task says why it
+exists, the taka at risk and the one-
+tap action
+People and
+time
+Cash sessions only 	Shifts, duty roster, pharmacist-on-
+duty gate, handover notes, period
+lock after day close
+Platform
+admin
+Tenant admin arrives in R3 	Minimal operations console from R1
+(pilot needs releases, health,
+support); full control plane in R3
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 2 of 74
+
+-- 2 of 74 --
+
+1.3 Headline architecture decisions
+1. One domain core, two shells. A modular monolith with the same business modules
+runs on each branch node and in the cloud.
+2. Command, event, projection. Every write is a command that emits events. Every
+dashboard figure is a projection you can drill down to documents.
+3. Branch hub. The local service pushes tickets, tasks and approvals to every screen over
+the LAN in real time, and replicates to a standby node.
+4. Outbound-only cloud link. The branch opens one secure connection to the cloud. No
+inbound ports, no broker credentials on shop PCs.
+5. Control plane versus data plane. Platform staff manage tenants, billing and releases in
+a plane that cannot read sales, stock or patient data.
+6. Approvals as a domain. Requests, policies, limits and delegations are tables, not
+scattered if-statements. Remote approval works offline through a challenge and
+response code.
+7. Rules before models. Alerts and reorder logic are deterministic and show their
+working.
+8. The database is the last guard. Sales of expired, blocked or over-MRP stock fail inside
+SQLite even if application code has a bug.
+Labels. Proposed default marks a number I chose to start from and that Phase 0 must
+calibrate. Assumption marks a belief about local shop practice that needs confirmation
+with real shopkeepers. Everything else is design.
+Area 	v2.0 	v3.0
+Resilience 	One host PC; restore within four
+hours
+Hot standby on a second counter by
+WAL shipping; restore target in
+minutes, to be proven in a Phase 0
+spike
+Integrity 	Rules stated in prose 	Rules enforced in the database and
+covered by tests (negative stock,
+append-only, MRP snapshot, expiry
+edge)
+Intelligence 	None 	Explainable rules first (reorder,
+expiry risk, anomaly); machine
+learning only after a year of data
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 3 of 74
+
+-- 3 of 74 --
+
+2. Where we beat the market
+We win on accountability and calm, not on feature count: stock that is where the system
+says, cash that balances, approvals that work when the network does not, and updates
+that never break a trading day. Each row below ties a market gap to the v3.0 answer and
+the pilot test that would prove it.
+Market gap 	Who feels
+it
+Evidence level 	v3.0 answer 	Pilot proof
+Stock location is
+not tracked, or
+only claimed (at
+least one local
+vendor
+advertises rack
+tracking)
+Inventory
+Manager,
+Cashier
+Vendor claim,
+untested
+Per-(location,
+batch) ledger,
+guided put-away,
+ABC cycle counts
+(Sections 5, 10)
+At least 98% of
+count lines
+match shelf and
+quantity
+Expected cash is
+shown at close,
+so staff count to
+the number
+Cashier,
+Branch
+Manager
+Practice
+guidance: blind
+close is
+standard retail
+advice; not
+verified in local
+pharmacy
+products
+Blind count by
+denomination,
+drop log, variance
+window narrowed
+to before or after
+a drop (Section 4)
+Cash variance
+within tolerance
+all pilot week
+Shared logins
+and approvals by
+sharing a
+password
+Owner,
+Branch
+Manager
+Design
+hypothesis from
+the v2.0 risk list
+Individual PIN,
+maker-checker
+ladder, no self-
+approval (Section
+3)
+Zero approvals
+without a
+second identity
+in the audit log
+Owner sees
+nothing until the
+cloud phase;
+desktop-first
+licences have no
+remote view
+Owner 	Vendor claim:
+Marg sold as
+perpetual
+desktop licence
+Morning brief in
+taka and remote
+approval from R1.5
+(Section 7)
+Owner opens
+the brief on 5 of
+7 pilot days
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 4 of 74
+
+-- 4 of 74 --
+
+Market gap 	Who feels
+it
+Evidence level 	v3.0 answer 	Pilot proof
+A bad update
+during trading
+hours
+Everyone 	Review-
+aggregator claim
+about a major
+US system
+Release rings,
+health gates,
+automatic
+rollback, no
+updates in trading
+hours (Section 8)
+Zero failed
+updates;
+rollback drill
+passes
+One host PC
+fails and the
+shop stops
+Cashier,
+Branch
+Manager
+v2.0 risk
+register
+Standby node fed
+by the event log;
+promotion in
+minutes (Section
+9)
+Standby
+promoted in a
+power-cut drill
+Retail margin is
+set by company
+commission, and
+retailers say it is
+thin
+Owner 	Reported: BCDA
+demanded a
+25%
+commission rise
+on 9 Oct 2025
+Margin by
+company and
+supplier from
+exact batch cost;
+effective cost
+including
+discounts
+(Sections 5, 7)
+Owner can
+name the three
+lowest-margin
+suppliers in one
+screen
+Licences lapse
+and pharmacist
+cover is thin
+Owner,
+Branch
+Manager
+Reported: about
+half of
+Chattogram
+pharmacies in a
+DGDA list had
+expired licences
+(report
+undated, c.
+2020)
+Licence and
+pharmacist-
+registration expiry
+reminders;
+pharmacist-on-
+duty gate (Section
+6)
+No lapsed
+licence or
+registration
+among pilot
+shops
+Expiry loss is
+invisible until the
+shelf is checked
+Inventory
+Manager,
+Owner
+Design
+hypothesis
+Expiry board with
+value at cost,
+return deadlines,
+and reorder
+capped by sell-
+through before
+expiry (Section 5)
+Expired write-
+off falls against
+the owner's
+baseline
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 5 of 74
+
+-- 5 of 74 --
+
+Two cautions from the evidence. First, the Chattogram report shows many shops already
+run on expired licences and thin pharmacist cover. A tool that exposes this can meet
+resistance, so licence and cover alerts go to the Owner only, and inspector mode is
+something the Owner switches on. Second, vendor and review-site claims in the table are
+not hands-on tested; Phase 0 should try two competitors on a real shelf before we print
+any comparison.
+Where we deliberately do not compete (unchanged from v2.0): insurance claims, e-
+prescribing networks, robotics, hospital inpatient pharmacy, and interaction checking
+until the regulatory view is confirmed.
+3. Role model, permissions and approvals
+Five personas get five workspaces, but the law needs one more idea: a licensed
+pharmacist is a credential a person holds, not a job. v3.0 therefore separates the job role
+(what you do all day) from the credential (what the licence lets you approve), and moves
+every approval into one policy-driven system.
+3.1 How the five roles map to v2.0
+v3.0 role 	v2.0 roles absorbed 	Scope 	Default limits
+(proposed defaults)
+Super Admin
+(platform)
+Super Admin, Support 	Platform only; split
+internally into
+Support L1,
+Support L2, Billing,
+Release, Security
+No standing read
+access to tenant
+business data
+Owner / Admin 	Owner 	Tenant, all
+branches
+Unlimited within
+MRP; owns policy
+and the approval
+limits of everyone
+else
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 6 of 74
+
+-- 6 of 74 --
+
+A small shop may give one person several roles. The rules below hold per person, so the
+same human can never approve their own request.
+3.2 Principles
+1. Capabilities, not menus. A role is a bundle of permission codes plus limits plus
+conditions (branch, time window, device). Screens appear because a capability exists.
+v3.0 role 	v2.0 roles absorbed 	Scope 	Default limits
+(proposed defaults)
+Branch Manager New. Takes the Owner's
+branch duties and the
+Chain-tier Regional
+Admin's branch part
+One or more
+branches
+Discount to 10%;
+approves voids,
+refunds and
+adjustments within
+value limits; cannot
+edit MRP or master
+data
+Inventory
+Manager
+Store Keeper + Purchase
+Officer, as capability
+bundles RECEIVE,
+SHELVE, COUNT,
+PURCHASE,
+SUPPLIER_RETURN
+Branch 	Sees cost; creates
+purchase orders to a
+value limit; cannot
+approve own
+adjustments
+Cashier 	Cashier 	Branch, own
+counter
+Discount to 3%;
+never sees cost or
+margin
+Licensed
+Pharmacist
+(credential)
+Pharmacist 	Attached to any
+user
+Needed to approve
+prescription and
+controlled lines. A
+Pharmacist preset
+(Cashier rights plus
+dispensing) stays
+available for the
+dispensing counter
+Accountant,
+Inspector
+(guests)
+Accountant, Auditor 	Tenant, read-only,
+time-limited
+Multi-factor sign-in;
+every read is logged
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 7 of 74
+
+-- 7 of 74 --
+
+2. Deny by default, checked in the local service for every call, and again in the cloud from
+R3.
+3. Maker-checker. Anything that moves money, stock value, price or access needs a
+second person. The requester and approver must be different users.
+4. Limits belong to the person's role and the policy, never to the screen.
+5. Branch scoping. A user holds a role per branch (table user_branch_role , Section 10).
+The Branch Manager of branch A has no rights in branch B.
+6. Delegation is explicit, time-boxed, capped and visible to the Owner.
+7. Mask by default. Cost, margin, patient name and phone appear only to roles that need
+them.
+3.3 Capability matrix
+Legend: Y yes · L yes within a value or percent limit · A can approve others' requests · Q
+may request, someone else approves · R read-only · P also needs the licensed-pharmacist
+credential · - no.
+Capability 	Super
+Admin
+Owner Branch Mgr 	Inventory
+Mgr
+Cashier
+Create, suspend
+tenants; plans; billing
+Y 	- 	- 	- 	-
+Release rings, fleet
+health, support sessions
+Y 	R (own
+fleet)
+R (own branch) 	- 	-
+Read tenant sales, stock,
+patient data
+- 	Y 	Y (branch) 	Y (stock) 	-
+Sell non-prescription
+items, take payment
+- 	Y 	Y 	- 	Y
+Dispense prescription or
+controlled items
+- 	P 	P 	- 	Q (ticket from
+credential
+holder)
+Discount within tier 	- 	Y 	L 	- 	L
+Void or refund a finalised
+sale
+- 	A 	A 	- 	Q
+Open shift, blind cash
+count
+- 	R 	A (variance) 	- 	Y
+Cash drop, paid-in, paid-
+out
+- 	A 	A 	- 	Q
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 8 of 74
+
+-- 8 of 74 --
+
+3.4 Approval ladder
+Every row is an approval_policy record the Owner edits. Counter-blocking actions time
+out in minutes; back-office actions in hours.
+Capability 	Super
+Admin
+Owner Branch Mgr 	Inventory
+Mgr
+Cashier
+Close day and lock
+period
+- 	A 	Y 	- 	-
+Receive goods, put away,
+move, label
+- 	Y 	Y 	Y 	-
+Release batch from
+quarantine
+- 	A 	A (P if cold chain or
+controlled)
+Q 	-
+Enter count figures 	- 	Y 	Y 	Y 	-
+Approve count variance,
+stock adjustment, write-
+off
+- 	A 	L 	Q 	-
+Create purchase orders,
+supplier returns
+- 	A 	A 	L 	-
+Pay suppliers 	- 	Y 	Q 	Q 	-
+See purchase cost 	- 	Y 	R 	R 	-
+See margin and profit
+and loss
+- 	Y 	- (branch margin if
+Owner enables)
+- 	-
+Edit medicine master,
+MRP, price lists
+- 	Y 	Q 	Q 	-
+Edit rack layout 	- 	Y 	Y 	Y 	-
+Inter-branch transfer 	- 	A 	A 	Q 	-
+Manage users and roles - 	Y 	L (Cashier and
+Inventory Mgr in own
+branch; no role
+upgrades)
+- 	-
+Set policies and approval
+limits
+- 	Y 	- 	- 	-
+Lock a user or device 	- 	Y 	Y (branch) 	- 	-
+Inspector export,
+dispensing register
+- 	Y 	Y 	- 	-
+Reports 	- 	All 	Branch 	Stock and
+purchase
+Own shift
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 9 of 74
+
+-- 9 of 74 --
+
+Taka thresholds are proposed defaults. Phase 0 should rescale them to the pilot shop's
+average basket and daily cash.
+3.5 Separation-of-duties rules (enforced in the service, tested in CI)
+1. Requester and approver are always different users.
+2. A Branch Manager's own requests go to the Owner or a peer manager, never back to
+themselves.
+Action 	Requester 	First approver 	Escalates
+to
+Proposed default
+threshold
+Timeout
+Discount above
+own tier
+Cashier 	Branch Manager 	Owner 	Cashier 3%; Manager
+10%; above that
+Owner
+2 min
+Void or refund after
+finalising
+Cashier 	Branch Manager 	Owner 	Manager up to
+৳2,000; above that
+Owner
+2 min
+Cash variance at
+shift close
+Cashier 	Branch Manager 	Owner 	Manager up to ৳100;
+above that Owner
+notified
+End of
+day
+Cash drop 	Cashier 	Branch Manager (co-
+sign)
+None 	Triggered when
+drawer cash exceeds
+৳20,000
+5 min
+Stock adjustment
+or write-off
+Inventory
+Manager
+Branch Manager 	Owner 	Manager up to ৳1,000
+at cost; above that
+Owner
+24 h
+Count variance
+above 2% of line
+value
+Counter 	Different person
+recounts, then
+Branch Manager
+Owner 	Matches the v2.0
+default threshold
+24 h
+Purchase order 	Inventory
+Manager
+Self up to a limit, then
+Branch Manager
+Owner 	Self ৳20,000;
+Manager ৳100,000;
+above that Owner
+24 h
+Cold-chain batch
+release after
+excursion
+Inventory
+Manager
+Credential holder (P) Owner
+notified
+Always 	4 h
+MRP or price-list
+change
+Anyone 	Owner 	None 	Always 	None
+New user, role
+change, PIN reset
+Branch
+Manager
+Owner 	None 	Manager may reset a
+Cashier PIN in own
+branch
+None
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 10 of 74
+
+-- 10 of 74 --
+
+3. The person who counts stock cannot approve that count.
+4. The person who creates a purchase order cannot post the goods receipt against it
+unless the shop has one staff member, and then the Owner is notified.
+5. A cashier who requested a void cannot approve the refund.
+6. Approving a limit-exceeding action leaves one audit record with both identities, old
+and new values, and the channel used.
+3.6 Approving when nobody is at the shop
+Remote approval works in three channels, tried in order.
+1. Local PIN. The approver stands at the terminal and types their own PIN.
+2. Phone push. When the branch link is up, the request reaches the approver's phone
+through the cloud channel and is answered with biometric or PIN.
+3. Offline code (challenge and response). With no internet at the shop, the approver
+opens the phone app, which works offline, and types the action type, the amount they
+intend to approve and the 6-digit challenge the terminal shows. The app returns a 6-
+digit response computed with a secret shared only with that branch. The terminal
+recomputes it. If the cashier relays a different amount, the code fails.
+Offline codes expire after 5 minutes, work once, lock after three wrong tries, are capped
+by a value limit the Owner sets, and are flagged for review when the branch next syncs.
+Keys are derived per approver and per branch, so one stolen key does not unlock other
+branches.
+3.7 The licensed-pharmacist credential
+The credential record holds the registration number, issuing body, valid-until date and
+who verified it. Four gates use it:
+1. Prescription and controlled lines cannot be finalised unless a user holding a valid
+credential is clocked in as pharmacist on duty and has approved the line. The Drugs
+and Cosmetics Act 2023 is summarised as requiring supervision by a qualified person
+in the sale of drugs; the Owner confirms the exact rule for the shop's licence class.
+2. Cold-chain and controlled batch releases need the holder's approval.
+3. Recall decisions are recorded under the holder's identity.
+4. A credential nearing expiry warns the Owner 60 days ahead and suspends the gates at
+expiry.
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 11 of 74
+
+-- 11 of 74 --
+
+4. Cashier experience
+The Cashier succeeds when a typical 5 to 8 item invoice takes under 2 seconds from last
+scan to printed receipt, no customer disputes the change, and the drawer balances at
+shift end. Everything else on the terminal stays out of the way. The Cashier is also the role
+most exposed to blame, so controls are built to protect honest staff as much as to catch
+dishonest ones.
+4.1 Jobs to be done
+1. Ring up items fast with the right batch and price, without thinking about FEFO or MRP.
+2. Take payment in any mix of cash, card, bKash, Nagad or credit, and give correct change.
+3. Handle returns, holds and discount requests without leaving the counter.
+4. Know their own shift is clean: float counted in, drops logged, blind count out.
+4.2 A shift from start to finish
+1. Sign in with PIN. The terminal shows who is clocked in as pharmacist on duty. Auto-
+lock after two minutes idle.
+2. Open the shift. Count the opening float by denomination. The count is saved against
+the cashier's name and the counter.
+3. Serve. Scan items or accept the ticket sent from the dispensing counter. The terminal
+picks the earliest-expiry batch and shows the shelf code so an assistant can fetch it.
+4. Hold and recall. Park a cart when a customer steps away. Held carts do not reserve
+stock beyond the session.
+5. Take payment. One screen, any split. Finalising writes the stock movements and the
+invoice in one transaction.
+6. Drop cash. When the drawer passes the Owner's threshold, the terminal asks for a
+drop. The Branch Manager co-signs. Retail guidance commonly sets a drop threshold
+and, in busy stores, drops every two hours (Xenia).
+7. Close the shift blind. Count cash by denomination. Only after submitting does the
+terminal show expected cash and the variance. This removes the "count to the
+number" shortcut that retail guidance describes.
+8. Hand over. The next cashier opens with the counted float; the shift diary note travels
+with it.
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 12 of 74
+
+-- 12 of 74 --
+
+4.3 Terminal layout
+4.4 Keyboard map (proposed)
+Zone 	Shows 	Why
+Top bar 	Cashier name, shift timer,
+pharmacist on duty (green) or No
+pharmacist on duty (red), sync
+and backup status in plain words
+The two facts that decide
+whether the counter can sell
+prescription items
+Cart (left, about
+60%)
+Item, batch and expiry, shelf
+code, quantity, price, line total;
+badges for prescription,
+controlled, under 90 days to
+expiry, below MRP
+Everything needed to fetch and
+check, nothing about cost
+Ticket queue
+(right top)
+Tickets from the dispensing
+counter with age and pharmacist
+initials
+Oldest first; a ticket never needs
+retyping
+Total and pay
+(right bottom)
+Total, the shop's rounding line,
+one large Pay button
+Taking money is the longest-
+looked-at moment
+Footer 	Shortcut hints 	Learnable in a day
+Key Action 	Key 	Action
+F1 	New sale 	F6 	Pay
+F2 	Hold cart 	F7 	Return (scan receipt barcode)
+F3 	Recall held cart 	F8 	Shift menu: drop, paid-out, close
+F4 	Customer by phone number F9 	Reprint, stamped COPY
+F5 	Request discount 	3* then scan Quantity 3 of the next item
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 13 of 74
+
+-- 13 of 74 --
+
+4.5 Payments and cash rules
+4.6 Controls that protect staff without slowing the queue
+1. Every override is one tap and one PIN, not a form. The approver sees the cashier, the
+item and the amount.
+2. Variance windows. Each drop and each approval stamps the time, so a shortfall maps
+to "before the 2 pm drop" or "after" and not to a whole shift.
+Case 	Behaviour
+Cash 	Quick-tender buttons and exact amount; change
+shown in large type; the shop's rounding rule
+printed; drawer opens on finalise. A no-sale drawer
+open needs a reason and is logged.
+bKash, Nagad (R1) 	Show the merchant number or QR; the cashier
+types the transaction reference, which is
+mandatory. The payment stays unconfirmed until
+matched at day close.
+bKash, Nagad (R1.5) Automatic confirmation when the provider's notice
+reaches the cloud and is relayed to the branch.
+Offline, the terminal falls back to the manual
+reference. bKash's published tokenized checkout
+is built around a customer browser redirect and
+callback, so a counter flow may need a different
+merchant product. Confirm with bKash in Phase 0.
+Card 	Terminal reference number recorded; no card data
+stored.
+Split 	Any mix; the remainder fills in automatically.
+Credit 	Needs a customer; blocked at the credit limit;
+exceeding it needs Branch Manager approval.
+Return or refund 	Starts from the receipt barcode; refunds to the
+original method; wallet refunds are flagged for
+manual action; cash refunds come out of the
+drawer and count in the shift. Approval per Section
+3.4.
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 14 of 74
+
+-- 14 of 74 --
+
+3. No price override at the till. The only way below MRP is a discount tier; above MRP is
+refused by the database.
+4. Exceptions go to the Branch Manager, not to a leaderboard. Rule-based flags
+(proposed default: a user's void, refund, discount or no-sale rate above twice the
+branch median with at least five events in a week) show as items to review, never as a
+public rank.
+5. The cashier sees their own shift summary (invoices, speed, voids) but never expected
+cash before the blind count and never cost or margin.
+4.7 When things break
+4.8 Acceptance targets
+Failure 	What the Cashier sees and can do
+Power cut mid-sale 	After restart: "Resume sale?" with the cart saved
+line by line. Stock moves only at finalise, in one
+transaction, so nothing is half-sold.
+Printer out of paper 	The sale completes; the receipt queues; Reprint is
+one key.
+Scanner will not read a pack 	Type the code or search; repeated misreads on one
+item are reported to the Inventory Manager as a
+label problem.
+Dispensing counter or LAN down Non-prescription sales continue on this terminal.
+Prescription lines need a credential holder to sign
+in locally.
+Host PC dead 	Terminal finds the standby node on its own
+(Section 9). If that fails, an emergency paper
+invoice book with a reserved number block keeps
+selling; entries are keyed in later and checked
+against the block.
+Measure 	Target
+Scan to cart 	Under 1 s
+Finalise and print, 5 to 8 items Under 2 s
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 15 of 74
+
+-- 15 of 74 --
+
+5. Inventory Manager experience
+The Inventory Manager needs to open the app and see, in order, what to do next and what
+it is worth. Instead of reports to interpret, the home screen is a ranked work queue where
+every task says why it exists, the taka at risk, and the one action that clears it. This role
+merges the v2.0 Store Keeper and Purchase Officer, so its capabilities can be split again in
+shops that have two people.
+5.1 Jobs to be done
+1. Receive goods correctly and shelve them the same day.
+2. Keep front shelves full without overstocking.
+3. Catch expiry early enough to sell, move or return the stock.
+4. Keep counts honest without closing the shop.
+5. Order the right quantity from the right supplier at the right effective cost.
+5.2 The work queue
+The rules engine (Section 12) creates tasks. Each carries its evidence, so nobody has to
+trust a black box.
+Measure 	Target
+Search result 	Under 300 ms
+Terminal launch 	Under 5 s
+New cashier productive 	About 2 hours of training (assumption, validate in
+UAT)
+Cash variance 	Within tolerance every shift of the pilot week
+Task 	Created when 	Shows 	One-tap action 	Proposed
+SLA
+Put away 	Stock sits in
+RECEIVING past the
+overdue window
+Items, value at
+cost, suggested
+shelf
+Start guided put-
+away
+Same
+working
+day
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 16 of 74
+
+-- 16 of 74 --
+
+5.3 Receiving cockpit
+1. Open the GRN against a purchase order or without one. Record supplier invoice and
+challan numbers.
+2. Blind receiving (option). The screen hides ordered quantities so staff count what
+arrived instead of confirming what was expected. Differences then appear as a short
+list.
+3. Capture each line by scan or typing: batch, expiry, quantity, rejected quantity with
+reason and optional photo, cost and MRP. GS1 codes pre-fill batch and expiry when
+present.
+Task 	Created when 	Shows 	One-tap action 	Proposed
+SLA
+Refill front
+shelf
+FRONT balance falls
+below its refill level
+and RESERVE has
+stock
+Shelf to fetch
+from, batch,
+quantity
+Print pick list or
+confirm move
+2 h
+Expiry
+action
+Batch enters the 90,
+60 or 30 day window
+Value at cost, shelf,
+supplier return
+deadline
+Move, return, or
+request write-off
+Per
+window
+Count due Count plan reaches
+a rack or class
+Location, class,
+last accuracy
+Start blind count Plan date
+Reorder
+draft
+Projected cover falls
+below lead time plus
+safety days
+Why (rate, cover,
+on order) and
+capped quantity
+Review and send
+purchase order
+1 day
+Return
+deadline
+A supplier's return
+window is about to
+close
+Items, credit value,
+last day
+Create supplier
+return
+Before
+deadline
+Cold-chain
+reading
+A COLD location
+misses its manual
+reading
+Location, limits,
+last reading
+Enter
+temperature
+4 h
+Label
+problem
+The same item is
+mis-scanned
+repeatedly
+Item, scan count 	Print internal
+label
+2 days
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 17 of 74
+
+-- 17 of 74 --
+
+4. Checks run as you type. MRP differing from the existing batch, cost above the agreed
+price, remaining shelf life under the threshold, expiry in the past, and cold-chain
+temperature out of range each raise a flag that needs an approver or a note.
+5. Print internal labels for items without usable barcodes in one batch.
+6. Post. Stock lands in RECEIVING as QUARANTINE; the supplier bill posts to the ledger;
+put-away tasks appear.
+5.4 Counts that find problems without closing the shop
+Cycle counting works best when frequency follows risk. Vendor guidance suggests ABC
+classes counted at descending frequency, a random sample on top so staff cannot predict
+what is counted, and a blind recount by a second person when a variance crosses a
+threshold.
+Classes are recomputed quarterly. A variance above 2 units on class A or above 5% on
+class B and C triggers a second blind count by a different person. The expected figure
+appears only after both counts. The Branch Manager approves the result within the value
+limit (Section 3.4). The headline measure is inventory record accuracy: lines where
+counted equals recorded within tolerance, divided by lines counted. Target: at least 98%
+in the pilot.
+5.5 Expiry board
+The board has one column per window and shows value at cost, computed correctly as:
+Class 	Who 	Proposed default
+frequency
+Method
+Controlled
+drugs
+All controlled items 	Weekly 	Count against the
+register, two people
+A 	Top 20% of items by value
+times velocity
+Every 14 days 	Blind count by shelf
+B 	Next 30% 	Every 60 days 	Blind count by shelf
+C 	Remaining 50% 	Every 180 days 	Blind count by shelf
+Random spot
+check
+5% of shelves each week,
+unannounced
+Weekly 	Blind count
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 18 of 74
+
+-- 18 of 74 --
+
+\text{value at risk} = \frac{\text{quantity (base units)} \times \text{cost
+per price unit}}{\text{base units per price unit}}
+5.6 Procurement that respects expiry and real cost
+A reorder draft uses recent sales rate, supplier lead time and safety days, then caps the
+quantity so it can sell before it expires:
+q = \max\bigl(0,\; r (L + P) + r\,s - h - o\bigr), \qquad q \le r\,(D - b) -
+h - o
+Here r is units sold per day, L lead time, P review period, s safety days (proposed default 3
+for class A, 2 for B, 1 for C), h on hand, o on order, D shelf life remaining at expected
+receipt, and b a buffer in days. The draft shows these inputs in plain words, so the
+Inventory Manager can disagree.
+Effective cost. Each supplier line can carry a trade discount and, where suppliers give
+them, free-goods schemes. Effective cost per unit is price times (1 minus discount)
+divided by (1 plus free quantity divided by bought quantity). Free-goods schemes are
+an assumption to confirm in Phase 0; the model works without them.
+Margin by supplier and company. Retail commission is a live issue (BCDA's October
+2025 demand), so the Owner needs margin by company from exact batch cost.
+Representative session. A screen for a visiting representative lists the items they sell,
+current cover, last cost, and a running order, so ordering takes minutes.
+Window 	Actions offered
+Over 90 days 	Watch only
+90 to 61 days 	Move to the NEAR_EXPIRY shelf; flag for push sale
+60 to 31 days 	Return to supplier if the window allows; transfer to
+a faster-selling branch (R2); discount within rules
+30 days or fewer Final return attempt; write-off request ahead of
+the date
+Expired 	Move to EXPIRED shelf; write-off request; sale is
+already blocked
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 19 of 74
+
+-- 19 of 74 --
+
+Purchase order delivery. PDF, print, or message text through channel adapters; the
+representative's number is on the supplier record.
+Returns. Each supplier has a return window; the board warns before it closes, and the
+return note creates a credit in the supplier ledger.
+5.7 Mobile and handheld
+A phone running the web app scans through its camera for put-away, counts and picking.
+Tasks sync over the shop LAN and queue offline. A dedicated scanner is optional.
+5.8 Targets
+6. Branch Manager experience
+The Branch Manager runs today. v2.0 had no such role: the Owner approved everything,
+which fails the moment the Owner is away or a second branch opens. v3.0 gives the
+manager one live board that answers "is the branch healthy right now?", an approval
+inbox that clears blockers fast, and a day-close wizard that ends the day with a locked,
+reconciled record.
+6.1 Jobs to be done
+1. Keep the counters selling: staff present, a pharmacist on duty, stock on the shelf,
+devices up.
+2. Clear approvals quickly so the queue never waits.
+Measure 	Target
+Received stock shelved within one working
+day
+At least 95%
+Inventory record accuracy 	At least 98%
+Median search to shelf found 	Under 15 s
+Recall drill: all stock and sales of a batch 	Under 5 min
+Expired write-off 	Falls against the owner's baseline
+Stockout of top-50 sellers 	Tracked weekly; target set after the
+baseline
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 20 of 74
+
+-- 20 of 74 --
+
+3. Close the day with cash reconciled and the books locked.
+4. Spot exceptions early and coach before they become losses.
+5. Be ready for an inspector on any day.
+6.2 Live board
+Every tile opens to the documents behind the number.
+6.3 Approval inbox
+1. Requests arrive in real time over the LAN, with requester, item, amount, reason and
+age.
+2. Approve or decline with one tap and the manager's own PIN. Declines need a reason.
+Tile 	Shows 	Turns red when (proposed default)
+Sales today 	Total against the average of the
+same weekday over the last four
+weeks
+More than 30% behind by mid-
+afternoon
+Counters and
+shifts
+Who is open, since when, tickets
+waiting
+A counter idle during opening
+hours, or tickets older than 5
+minutes
+Pharmacist on
+duty
+Name and credential status 	None clocked in during opening
+hours
+Cash in drawers Expected cash per open session
+(visible here, hidden from
+cashiers)
+Above the drop threshold with no
+drop
+Approvals
+waiting
+Count and oldest age 	Any older than its timeout
+Stock risks 	Top-50 sellers out of stock; value
+expiring this week
+Any top-50 item at zero
+Tasks overdue 	Put-away, refill, counts, by owner 	Any past SLA
+Branch health 	Sync lag, backup age, standby
+status, UPS state, disk space
+Backup older than 24 h; standby
+behind; UPS on battery
+Exceptions 	Rule flags from Section 6.6 	Any unreviewed
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 21 of 74
+
+-- 21 of 74 --
+
+3. A request the manager cannot approve (over limit, or their own) escalates
+automatically per the ladder in Section 3.4.
+4. The manager can delegate to a deputy for a window, with a cap. The Owner sees every
+delegation.
+5. Counter-blocking requests also ring on the manager's phone when the manager is off
+the floor.
+6.4 People, roster and pharmacist cover
+Roster. Weekly shifts by person and role, with a coverage check: every opening hour
+needs a clocked-in credential holder.
+Clock-in is the PIN sign-in on a registered device. A forgotten clock-out is closed at
+shift end with a note.
+Shift diary. Free-text handover notes and an incident log (short change, dispute,
+counterfeit note, equipment fault) that the next shift sees on sign-in.
+Staff changes. The manager can add a Cashier or Inventory Manager to their branch
+and reset a Cashier PIN. Role upgrades go to the Owner.
+6.5 Day-close wizard
+1. All counters closed. Any open shift or held cart is listed and must be cleared.
+2. Unfinalised work. Draft invoices, unposted receipts and open approvals are resolved
+or carried over with a note.
+3. Cash. Review each cashier's blind-count variance. Beyond tolerance, the manager
+writes an explanation; beyond the manager's limit, the Owner is notified.
+4. Mobile wallet and card. Match unconfirmed references to the provider statement
+(CSV import in R1; automatic in R1.5). Anything unmatched becomes a follow-up.
+5. Deposit. Record cash banked and the slip reference.
+6. Lock the business day. The day becomes read-only. Later corrections are new
+adjusting entries dated today that point to the locked day.
+7. Digest. The morning brief for the Owner is prepared (Section 7).
+6.6 Exceptions, not rankings
+Rules create review items. They are prompts to look, never findings of fault. The manager
+records the outcome (explained, coaching, escalate), and those outcomes tune
+thresholds.
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 22 of 74
+
+-- 22 of 74 --
+
+6.7 Inspector-ready on any day
+One action produces an inspection pack: the dispensing register and purchase records
+for the period, with a verification line showing the hash chain is intact and whether its
+head matches the cloud copy; the current expiry and quarantine summary; licence and
+pharmacist-registration copies with their expiry dates; and cold-chain logs. A guest
+Inspector token is time-limited, read-only and logged, and only the Owner can issue it.
+Licence and registration expiry reminders reach the Owner and manager 60 and 30 days
+ahead; the Chattogram licence report describes renewal as every two years under the
+repealed 1940 Act, so the renewal period under the 2023 Act is a Phase 0 check.
+6.8 Other branch duties
+Transfers (R2). Request stock from a sister branch, or answer a request, with sent and
+received quantities reconciled.
+Customer issues. A short log of complaints and suspected adverse reactions, kept for
+the Owner and pharmacist.
+Limits. The manager cannot edit MRP or the medicine master, change policies, approve
+their own requests or see company-wide finance.
+Rule 	Proposed default 	Seen by
+Void or refund rate 	Above twice the branch median with at
+least 5 events in a week
+Manager,
+Owner
+Repeated discounts to one
+customer
+3 or more over tier in 7 days 	Manager
+No-sale drawer opens 	3 or more in one shift 	Manager
+Sales after shift end or after
+day close
+Any 	Manager,
+Owner
+Cash variance pattern 	Same cashier short on 3 shifts in 14 days Manager,
+Owner
+Stock adjustments by one user Value above twice the median 	Owner
+Clock moved backwards 	Any 	Owner
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 23 of 74
+
+-- 23 of 74 --
+
+6.9 Targets
+7. Owner / Admin experience
+The Owner needs to know the state of money and risk in two minutes, and to act from a
+phone when away. The home screen is a morning brief written in taka and in plain
+language, backed by a cockpit where every figure drills down to the invoices, movements
+and people behind it. The Owner also sets the rules everyone else works under, so policy
+tools get as much care as dashboards.
+7.1 Jobs to be done
+1. Trust the numbers: profit from real batch cost, cash that reconciles, stock that exists.
+2. Spot leaks early: expiry, shrink, discounts, voids, thin supplier margins.
+3. Stay in control while away: approve, lock, adjust limits from the phone.
+4. Run more than one branch the same way.
+5. Stay compliant without becoming an expert.
+7.2 Morning brief (phone first, SMS fallback)
+Measure 	Target
+Median approval time, counter-blocking Under 60 s
+Day close completed 	Within 30 minutes of the last shift ending
+Cash variance within tolerance 	Every day of the pilot week
+Unreviewed exceptions older than 48 h Zero
+Item 	What it says 	Drills into
+Yesterday 	Sales and gross profit per branch;
+gross profit uses each sale line's batch
+cost and nets out VAT per the item's
+VAT mode
+Invoices, lines, margin by
+medicine, company
+Cash 	Banked against expected, with any
+variance and who explained it
+Day close, shift counts, drops
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 24 of 74
+
+-- 24 of 74 --
+
+The brief is short by design. At most one screen on a phone, with the three most
+important items first.
+7.3 Cockpit
+Item 	What it says 	Drills into
+Needs you 	Approvals waiting, exceptions
+unreviewed
+Inbox
+Stock risk 	Top sellers at zero; value expiring in 30
+days
+Expiry board, reorder drafts
+Capital tied
+up
+Dead stock value and slow movers, at
+cost
+Item list with suggested action
+Money out 	Supplier dues in the next 7 days;
+customer dues aging
+Ledgers
+Health 	Backups, sync, standby, licence and
+registration expiry
+Fleet status
+Section 	Questions it answers
+Money 	Which days, shifts and branches lose cash? What is
+real margin by medicine, company and supplier?
+Risk 	Where are voids, discounts, adjustments and
+write-offs above normal? Any clock rollback, chain
+mismatch or restore overdue?
+Stock capital How much is tied up in dead, slow and near-expiry
+stock, and which supplier return can recover it?
+Suppliers 	Who is cheapest by effective cost, who delivers
+short, who accepts returns?
+People 	Who is on duty now? Who holds which role and
+credential, and when do licences lapse?
+Branches 	Side-by-side health, with causes rather than a rank
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 25 of 74
+
+-- 25 of 74 --
+
+7.4 Control from anywhere
+Approve from the phone, or by reading a code over a call when the shop has no
+internet (Section 3.6).
+Lock a user or a device, or end a session, effective at once online and at the next sync
+offline.
+Adjust a discount limit or approval threshold for a day or a branch.
+Pause selling at one branch as an emergency control. It is deliberately two steps and
+always logged.
+Delegate to a Branch Manager with a cap and an end date.
+7.5 Policy centre with impact preview
+Policies are data: discount tiers, approval ladder, expiry windows, drop threshold,
+rounding, VAT mode, receipt text, SMS rules. Before saving a change, the centre replays
+the last 30 days against it and shows what would have changed: "this limit would have sent
+41 extra requests to managers and cut 6 discounts." Changes apply from a chosen time
+and are versioned.
+7.6 More than one branch
+Central catalog and price lists with effective dates; branches keep their own shelf
+defaults.
+Rack templates so a new branch is labelled from a known layout.
+Comparison by branch for sales, margin, expiry loss, shrink and cash variance, shown
+with context such as opening hours and staff count.
+Transfer suggestions (R2): stock near expiry in one branch that sells faster in another.
+7.7 Finance and the accountant
+Profit and loss, a cash outlook comparing supplier dues with expected takings, and a VAT
+summary structured for the monthly return. The Accountant is a read-only guest with
+multi-factor sign-in. Exports go to PDF, Excel and CSV first; connectors to accounting
+products follow in R4. Rates and return formats come from the country pack and must be
+confirmed with the shop's accountant.
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 26 of 74
+
+-- 26 of 74 --
+
+7.8 Trust tools
+Audit explorer with who, when, device, old and new values, and a verification line for
+the hash chain.
+Data export of everything, any time, in open formats. Owners are more willing to
+commit to a system they can leave.
+Backup and restore status in plain words: last verified restore, last cloud upload,
+offline copy.
+7.9 Alert budget
+Too many alerts get ignored. Alerts follow a ladder.
+7.10 Owner account recovery
+An Owner who loses their phone must not lose the business, and a thief must not gain it.
+Proposed design: a recovery contact registered at setup; an in-person identity check by
+platform support; a 72-hour cooling-off period during which every existing device and the
+recovery contact are notified. This needs a Phase 0 legal and fraud review before it ships.
+7.11 Targets
+Level 	Examples 	Delivery
+Critical No pharmacist on duty while selling;
+chain mismatch; clock rollback; two
+failed backups; cash variance above the
+manager's limit
+Push and SMS at once
+Warning Approvals waiting past timeout; top
+seller at zero
+Push, batched hourly, capped at 5 a
+day by default
+Info 	Everything else 	In the morning brief only
+Measure 	Target
+Owner opens the brief 	At least 5 of 7 pilot days
+Time to find the cause of a cash variance 	Under 5 minutes
+Policy change preview shown before saving 100%
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 27 of 74
+
+-- 27 of 74 --
+
+8. Super Admin experience
+Platform staff keep every tenant live, billed, current and supported, and they do it from a
+control plane that has no read path to tenant sales, stock or patient data. That is
+enforced by architecture (separate service, separate database, a database role with no
+grants on tenant tables), not by a promise in a policy. "Super Admin" is a job title; inside
+the company it splits into least-privilege roles.
+8.1 Platform roles
+All platform actions are logged to a store the platform staff cannot edit, and destructive
+ones need a second person.
+Measure 	Target
+Critical alerts acknowledged 	Within 15 minutes in trading hours
+Platform role 	Can 	Cannot
+Support L1 	See tenant metadata, fleet
+diagnostics, tickets; request a
+support session
+Read any tenant business data
+Support L2 	Run a consented support session
+on specific records, time-boxed
+Start a session without the tenant
+Owner's approval
+Billing 	Plans, invoices, dunning, credits,
+hardware bundles
+See operations data
+Release
+engineer
+Rings, rollouts, pause, rollback 	See tenant data; push to all at once
+Security 	Revoke devices, rotate keys (two
+people), run incident tools
+Read data without tenant approval
+or a documented legal basis
+Platform
+admin
+Assign platform roles (two people) 	Act without hardware-key sign-in
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 28 of 74
+
+-- 28 of 74 --
+
+8.2 Tenant lifecycle
+8.3 Plans and entitlements
+Plans from v2.0 Section 19 become data: a plan lists features, limits (branches, users,
+devices, SMS credits) and support level. A tenant can carry overrides with an end date.
+Feature flags in the branch software read the entitlement snapshot that syncs down, so
+editions are configuration, not forks. Entitlements never switch off core selling.
+8.4 Fleet console
+Stage 	What changes 	Rule
+Lead and
+pilot
+Provisioned from a template;
+hardware kit and training booked
+Pilot flag unlocks extra support and
+weekly check-ins
+Active 	Plan and entitlements apply 	None
+Payment
+grace
+Reminders to the Owner 	Counters never stop selling.
+Cloud-limited Remote features pause first (digest,
+remote approval, new branches,
+new users from the cloud); local
+operation, local backup and export
+continue
+The branch keeps working with no
+degradation at the counter
+Offboarding 	Full export delivered and confirmed Deletion only after confirmed
+export and after the retention
+period the shop owes its own
+regulator, since registers must be
+kept for years
+Signal 	From 	Raises an alert when (proposed
+default)
+Heartbeat Each device, with app version, last sync,
+outbox size, backup age, disk space
+No heartbeat for 24 h in trading
+days
+Sync lag 	Outbox age and server sequence gap 	Over 6 h behind
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 29 of 74
+
+-- 29 of 74 --
+
+8.5 Release management
+1. Rings. Internal, then pilot shops that agreed to go first, then 10% of tenants, then
+everyone.
+2. Windows. Updates install only outside trading hours, preceded by an automatic
+backup.
+3. Health gates. A rise in crashes, sync errors, failed migrations or failed backups pauses
+the rollout by itself.
+4. Rollback. A failed migration restores the pre-update backup automatically. The release
+engineer can recall a release from any ring.
+5. Compatibility. The cloud accepts sync payloads from the current and previous two
+app versions (as v2.0 Section 13.8), and a behind branch sees an "update needed"
+notice but keeps selling.
+6. Notes. Release notes in Bangla and English for Owners.
+8.6 Support sessions with consent
+1. A ticket opens; Support L1 collects a redacted diagnostics bundle from the device (no
+patient data, by construction).
+2. If that is not enough, L2 requests a session naming the scope (for example "invoice
+records for 3 April") and the reason.
+3. The Owner approves in the app. The session token is read-only by default, expires
+(proposed default two hours) and can be ended by the Owner at any moment.
+4. Every record opened is logged and shown to the Owner afterwards.
+Signal 	From 	Raises an alert when (proposed
+default)
+Backup 	Last verified local and cloud backup 	Over 24 h old, or a restore drill
+overdue
+Clock
+drift
+Device against server 	Over 5 minutes, or any rollback
+Version 	Device version against ring target 	More than two releases behind
+Standby 	Standby node replication state 	Behind or absent
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 30 of 74
+
+-- 30 of 74 --
+
+8.7 Onboarding factory
+8.8 Catalog and regulatory content governance
+Country packs (tax, registers, retention, receipts) are versioned with effective dates and
+a named reviewer. Medicines a shop creates locally are queued as suggestions for the
+master catalog using names and codes only, never sales or stock data, and a curator
+merges or rejects them.
+8.9 Isolation and security
+Row-level security forced on every tenant table; the application role does not own the
+tables.
+Automated tests that try cross-tenant reads in CI on every build.
+Per-tenant encryption keys for restricted fields.
+The control-plane database holds tenant metadata, plans, billing, fleet state and
+release state only.
+8.10 Tenant health score
+A score built from counters, not content: put-away on time, counts completed, approvals
+answered, brief opened, backups verified, support tickets. It tells customer success who
+needs a visit. It never reads what was sold.
+Step 	Output
+Provision tenant Country pack, role set, policy defaults, rack
+template
+Seed catalog 	Import from the DGDA registry or a licensed
+dataset once access terms are confirmed in Phase
+0
+Hardware kit 	Checked list: host or mini-PC, UPS, printer, drawer,
+2D scanner, label printer
+Opening stock 	Guided rack-by-rack count (v2.0 Section 10.1)
+Parallel run 	Manual process runs beside the system for the
+agreed UAT period
+Go-live sign-off Checklist signed by the Owner and the installer
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 31 of 74
+
+-- 31 of 74 --
+
+8.11 Phasing and targets
+A minimal operations console ships with R1, because the pilot already needs device
+registry, heartbeat, version pinning and a support bundle. Billing, entitlements, rings and
+consented sessions grow through R3.
+9. Architecture v3.0
+Three tiers with hard boundaries: the branch node is the system of record and never
+needs the cloud to sell; the data plane holds each tenant's synced data in the cloud; the
+control plane runs the platform and cannot read tenant data. The design constraints are
+unreliable power and internet, non-technical staff, a small team that must operate it, and
+health data.
+Measure 	Target
+Tenant provisioned from template 	Under 1 hour
+Failed updates reaching more than one ring Zero
+Support sessions without Owner approval Zero
+Dark branch detected 	Within 24 h
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 32 of 74
+
+-- 32 of 74 --
+
+The shop node keeps selling with the internet down. The cloud data plane follows its
+events, and the control plane sees only health and versions, never tenant rows.
+9.1 Branch node anatomy
+architecture · shop LAN, cloud data plane, control plane
+Component 	Responsibility 	Notes
+Local service 	One process owns the database
+and all business rules, built as a
+modular monolith with modules
+for Catalog, Inventory,
+Procurement, Sales, Dispensing,
+Cash, Staff and Shifts, Approvals,
+Tasks and Alerts, Projections, Sync
+SQLite in WAL mode with
+SQLCipher; one writer; nothing
+else opens the file
+Command bus 	Every write is a command:
+permission and policy check, then
+one transaction that writes
+documents, ledger rows, audit row
+and outbox row
+A sale is wholly saved or not
+saved
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 33 of 74
+
+-- 33 of 74 --
+
+9.2 Hot standby for the host PC
+v2.0 accepted a four-hour restore after a host failure. A shop cannot close for four hours,
+so v3.0 adds a standby.
+Component 	Responsibility 	Notes
+Realtime hub 	Pushes tickets, approvals, tasks,
+alerts and presence to every
+screen on the LAN
+WebSocket or server-sent
+events; clients resume from the
+last event id after a drop
+Workspaces 	Counter terminal, dispensing
+counter, inventory workbench,
+branch console, and a phone web
+app for managers and stock staff
+Served by the local service; a
+desktop shell only if Phase 0
+shows browser access to devices
+is inadequate
+Device agent 	Receipt and label printing, drawer,
+scanner input
+Browsers do not speak ESC/POS,
+so the agent does
+Sync agent 	One outbound secure connection
+to the cloud
+No inbound ports, no broker
+credentials on shop PCs
+Backup agent 	Rolling local backups, nightly
+encrypted cloud upload,
+automatic restore drills (restore
+to a temporary file, run integrity
+checks and ledger invariants)
+A backup is trusted only after it
+has been restored
+Standby node 	A second counter PC running the
+same service in standby
+Section 9.2
+Updater and
+watchdog
+Signed staged updates;
+supervises the service; shuts
+down gracefully when the UPS
+signals low battery
+Checkpoint before shutdown
+Option 	How it works 	Verdict
+Logical standby
+(event stream)
+The standby applies the same
+immutable event log that
+already feeds cloud sync, over
+the LAN
+Chosen. Independent of
+database encryption, and reuses
+the sync model
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 34 of 74
+
+-- 34 of 74 --
+
+Promotion rule. The standby holds a lease on the primary's heartbeat. When the lease
+lapses (proposed default 15 seconds), it shows "Main PC unreachable. Promote this PC?"
+and promotes on a Branch Manager or Owner PIN. Two writers are worse than one down,
+so a human confirms. A returning old primary demotes itself, compares event heads with
+the new primary, and catches up or raises an alert. Targets: loss of seconds, recovery in
+minutes. These are targets to prove in a Phase 0 spike and a power-cut drill, not
+promises yet.
+9.3 Links between tiers
+Option 	How it works 	Verdict
+Physical WAL
+shipping
+A tool such as Litestream
+streams WAL frames to a file or
+object-storage target
+Reserve. I found no confirmation
+that it handles SQLCipher-
+encrypted files, so test before
+relying on it
+Periodic encrypted
+file copy
+Copy the database to the
+second PC every few minutes
+Fallback. Simple; loses minutes
+of work
+Link 	Carries
+Counter to branch hub 	Commands up, live updates down over the LAN
+Branch to cloud (outbound only) Event batches up with idempotency keys; change
+feed down for catalog, prices, users, policies and
+entitlements; approval relays; payment
+confirmations; push triggers. Retries use
+exponential backoff with jitter
+Phone to cloud 	HTTPS and push notifications. On the shop Wi-Fi
+the phone talks to the branch directly
+Payment provider to cloud 	Provider notices land at a cloud receiver, since
+shops have no public address, then relay to the
+branch
+Cloud to people 	SMS gateway adapters, push, email
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 35 of 74
+
+-- 35 of 74 --
+
+9.4 Data plane and control plane
+9.5 Technology recommendations
+These refine v2.0 Section 12.4. They are recommendations; your team's skills decide.
+Data plane 	Control plane
+Holds 	Tenant events, projections, reports,
+prescription images, backups
+Tenants, plans, entitlements, billing,
+fleet state, releases, support
+sessions, platform users
+Database 	PostgreSQL, shared tables,
+tenant_id , forced row-level
+security
+Separate PostgreSQL; no tenant
+business tables
+Used by 	Owner, Branch Manager, Inventory
+Manager, branch sync
+Platform staff only
+Talks to the
+other
+Narrow API: entitlement snapshot
+down, counters up
+Narrow API: provision tenant, fleet
+counters; never a tenant data query
+Layer 	Recommendation 	Why
+Language 	TypeScript end to end 	One shared domain-core package
+for branch node, cloud and UI
+types, which suits a small team
+Local service Fastify, SQLite (WAL) with
+SQLCipher
+Boring, fast, one writer
+UI 	React with one design system,
+Bangla font bundled, tested at
+1366x768
+Five workspaces share
+components
+Realtime 	WebSocket with resumable event ids Needed for tickets, approvals and
+tasks
+Cloud 	The same core package behind
+Fastify or NestJS; PostgreSQL; S3-
+compatible storage
+Reuse over rewrite
+Observability OpenTelemetry, structured logs with
+no patient data
+One trace from counter to cloud
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 36 of 74
+
+-- 36 of 74 --
+
+9.6 Events and APIs
+Every change is an event with a stable envelope. The same envelope feeds the outbox, the
+standby, projections and, in R4, webhooks.
+{
+"event_id": "01J...",
+"type": "sale.finalized",
+"version": 1,
+"tenant_id": "...", "branch_id": "...", "device_id": "...", "user_id":
+"...",
+"occurred_at": "2026-10-11T13:42:07.120Z",
+"payload": { "invoice_id": "...", "total_minor": 128000 }
+}
+Core catalogue: sale.finalized , stock.moved , batch.status_changed ,
+approval.requested , approval.decided , shift.opened , shift.closed ,
+cash.dropped , day.locked , task.created , task.completed , alert.fired . APIs are
+REST with JSON, versioned, described in OpenAPI; the local service API is the same
+contract the screens use.
+9.7 Failure modes
+Layer 	Recommendation 	Why
+Delivery 	Containers; managed services before
+self-run Kafka or Kubernetes
+As in v2.0
+Failure 	Effect 	Response
+Internet down 	Remote features pause;
+counters unaffected
+Outbox queues; offline approval
+codes; SMS digest if a gateway is
+configured
+Cloud down 	Same as above 	Branch operates indefinitely; sync
+catches up
+Host PC dies 	Counters lose the hub 	Standby promotion; paper
+emergency book as last resort
+Standby down 	No immediate effect 	Branch health tile and Owner alert
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 37 of 74
+
+-- 37 of 74 --
+
+10. Data architecture
+The v2.0 model (ledger, batch, location, balances) stays. v3.0 adds the tables the five
+workspaces need and closes nine gaps between what v2.0 says the database enforces
+and what its SQL actually enforces. The fixes and the core new tables were run on SQLite
+3.45 against a reduced copy of the v2.0 schema: 26 guard tests and 4 reconciliation
+checks passed (each guard refused the bad write, each good write succeeded, ledger and
+balances matched, expiry value at risk was correct, integrity and foreign-key checks
+clean). This is a design-level test; the full v2.0 suite must be re-run on the real schema in
+Phase 1a.
+10.1 Nine defects in the v2.0 SQL
+Failure 	Effect 	Response
+Database
+corruption
+Startup integrity check fails 	Restore from last verified backup;
+replay unsent events from the
+standby or cloud copy
+Power cut 	Transaction in flight 	WAL and single-transaction commit;
+graceful UPS shutdown
+Clock rolled
+back
+Possible expiry or audit evasion 	Monotonic guard blocks until Owner
+PIN; Owner alert
+Bad release 	Branches affected 	Rings, health gates, automatic
+rollback
+# 	Defect in v2.0 	Effect 	v3.0 fix
+1 	Negative stock is only a view
+( v_negative_stock );
+nothing stops an oversell.
+The stock.allow_negative
+setting is never read
+A buggy screen
+can sell stock that
+is not there
+trg_no_negative_stock
+refuses any movement that
+overdraws its source, unless
+the branch setting allows it
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 38 of 74
+
+-- 38 of 74 --
+
+# 	Defect in v2.0 	Effect 	v3.0 fix
+2 	The PRD calls the ledger,
+audit log, register and
+ledgers append-only, but
+only two triggers exist
+Anyone with file
+access can edit
+history
+Update and delete refused on
+stock_movement , audit_log ,
+dispensing_register , and
+both ledgers. Hashes must
+therefore be computed before
+insert
+3 	MRP and cost snapshots on
+a sale line come from the
+caller; the check compares
+price with a number the
+caller supplied
+A faulty client can
+pass a higher MRP
+and sell above the
+real one
+trg_sale_line_snapshots
+requires snapshots to equal the
+batch's MRP and cost
+4 	Batch and medicine are
+separate keys on movements
+and sale lines
+A line can name
+medicine A and
+batch of medicine
+B
+Same trigger family checks they
+agree
+5 	The sale guard compares
+expiry to the UTC date, and a
+sale with no source location
+skips the location check
+In Dhaka (UTC+6)
+an expired batch
+stays sellable
+from midnight to
+06:00 local on the
+day after expiry
+branch.utc_offset_min and
+branch-local date; a sale must
+have a source
+6 	v_expiry_watch multiplies
+base units by cost per price
+unit
+Value at risk is
+overstated by the
+units-per-price-
+unit factor
+(tenfold for a strip
+of 10 in the test)
+Divide by the factor from
+medicine_uom
+7 	payment and sale_invoice
+do not point to a cash
+session or device
+The Z-report
+cannot be derived
+relationally
+Add cash_session_id and
+device_id
+8 	app_user has one branch 	A manager or
+stock keeper
+cannot work
+across branches
+user_branch_role with a role
+per branch
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 39 of 74
+
+-- 39 of 74 --
+
+10.2 New tables
+# 	Defect in v2.0 	Effect 	v3.0 fix
+9 	The PRD describes supplier
+returns, recalls, transfers,
+temperature logs and write-
+off documents, but no tables
+exist
+Those workflows
+have nowhere to
+live
+Tables listed in 10.2 (designed,
+not yet in the tested delta)
+Domain 	Tables 	State
+Staff and time 	user_branch_role , pharmacist_credential ,
+shift
+Tested
+duty_roster 	Planned
+Approvals 	approval_policy , approval_request (no self-
+approval enforced by a CHECK), delegation
+Tested
+Cash 	cash_event (drop, paid-in, paid-out, no-sale, blind
+count; co-signer must differ), day_close
+Tested
+invoice_void , period-lock triggers keyed on
+day_close
+Planned
+Work 	task with why_json and value_at_risk_minor 	Tested
+alert_rule , alert , notification_outbox 	Planned
+Procurement 	supplier_item_price (discount and optional
+free-goods scheme), reorder_policy ,
+supplier_return and lines, recall and actions,
+transfer_order and lines, temperature_log ,
+count_plan
+Planned
+Projections 	kpi_daily_branch , kpi_daily_user , rebuildable
+from events
+Planned
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 40 of 74
+
+-- 40 of 74 --
+
+Cloud tables keep the v2.0 rules: tenant_id first in every key and index, forced row-level
+security, time partitioning for large append-only tables.
+10.3 Tested SQL (excerpt)
+-- Branch-local date, cash links, multi-branch staff
+ALTER TABLE branch ADD COLUMN utc_offset_min INTEGER NOT NULL DEFAULT 360;
+ALTER TABLE payment ADD COLUMN cash_session_id TEXT REFERENCES
+cash_session(session_id);
+ALTER TABLE sale_invoice ADD COLUMN cash_session_id TEXT REFERENCES
+cash_session(session_id);
+ALTER TABLE sale_invoice ADD COLUMN device_id TEXT REFERENCES
+device(device_id);
+-- No negative stock unless the branch allows it
+CREATE TRIGGER trg_no_negative_stock
+BEFORE INSERT ON stock_movement
+WHEN NEW.from_location_id IS NOT NULL
+BEGIN
+SELECT RAISE(ABORT, 'INSUFFICIENT_STOCK: source balance too low')
+WHERE COALESCE((SELECT value FROM app_setting
+WHERE tenant_id = NEW.tenant_id AND branch_id IN
+(NEW.branch_id, '')
+AND key = 'stock.allow_negative'
+ORDER BY branch_id DESC LIMIT 1), '0') <> '1'
+AND COALESCE((SELECT qty_base FROM stock_balance
+WHERE location_id = NEW.from_location_id
+AND batch_id = NEW.batch_id), 0) < NEW.qty_base;
+END;
+-- Sale line snapshots must equal the batch
+CREATE TRIGGER trg_sale_line_snapshots
+BEFORE INSERT ON sale_line
+Domain 	Tables 	State
+Control plane
+(PostgreSQL)
+plan , plan_feature , tenant_subscription ,
+entitlement_override , saas_invoice ,
+release_ring , release ,
+device_release_state , support_access_grant ,
+support_access_event ,
+tenant_health_snapshot
+Planned
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 41 of 74
+
+-- 41 of 74 --
+
+BEGIN
+SELECT RAISE(ABORT, 'BATCH_MEDICINE_MISMATCH')
+WHERE (SELECT medicine_id FROM batch WHERE batch_id = NEW.batch_id) <>
+NEW.medicine_id;
+SELECT RAISE(ABORT, 'MRP_MISMATCH: snapshot differs from batch MRP')
+WHERE NEW.mrp_minor_snapshot <> (SELECT mrp_minor FROM batch WHERE
+batch_id = NEW.batch_id);
+SELECT RAISE(ABORT, 'COST_MISMATCH: snapshot differs from batch cost')
+WHERE NEW.cost_minor_snapshot <> (SELECT cost_minor FROM batch WHERE
+batch_id = NEW.batch_id);
+END;
+-- Append-only pattern (repeat per table)
+CREATE TRIGGER trg_stock_movement_no_update BEFORE UPDATE ON stock_movement
+BEGIN SELECT RAISE(ABORT, 'APPEND_ONLY: stock_movement'); END;
+CREATE TRIGGER trg_stock_movement_no_delete BEFORE DELETE ON stock_movement
+BEGIN SELECT RAISE(ABORT, 'APPEND_ONLY: stock_movement'); END;
+-- Branch-local expiry in the sale guard (replaces the v2.0 trigger)
+-- ... WHERE (SELECT expiry_date FROM batch WHERE batch_id = NEW.batch_id)
+-- 	< date('now', printf('%+d minutes',
+-- 	(SELECT utc_offset_min FROM branch WHERE branch_id =
+NEW.branch_id)));
+-- Approvals: requester and approver must differ
+CREATE TABLE approval_request (
+request_id TEXT PRIMARY KEY,
+tenant_id TEXT NOT NULL REFERENCES tenant(tenant_id),
+branch_id TEXT NOT NULL REFERENCES branch(branch_id),
+action_code TEXT NOT NULL, entity_type TEXT, entity_id TEXT, amount_minor
+INTEGER,
+request_hash TEXT NOT NULL,
+requested_by TEXT NOT NULL REFERENCES app_user(user_id),
+requested_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+expires_at TEXT NOT NULL,
+status TEXT NOT NULL DEFAULT 'PENDING'
+CHECK (status IN
+('PENDING','APPROVED','DECLINED','ESCALATED','EXPIRED')),
+decided_by TEXT REFERENCES app_user(user_id), decided_at TEXT,
+decision_note TEXT,
+channel TEXT CHECK (channel IN ('LOCAL_PIN','REMOTE_APP','OFFLINE_CODE')),
+CHECK (decided_by IS NULL OR decided_by <> requested_by)
+);
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 42 of 74
+
+-- 42 of 74 --
+
+-- Blind cash events with a distinct co-signer
+CREATE TABLE cash_event (
+cash_event_id TEXT PRIMARY KEY,
+session_id TEXT NOT NULL REFERENCES cash_session(session_id),
+event_type TEXT NOT NULL CHECK (event_type IN
+('OPEN_COUNT','PAID_IN','PAID_OUT','DROP','NO_SALE_OPEN','BLIND_COUNT','ADJUS
+TMENT')),
+amount_minor INTEGER NOT NULL, denominations TEXT, reason TEXT,
+user_id TEXT NOT NULL REFERENCES app_user(user_id),
+cosigned_by TEXT REFERENCES app_user(user_id),
+occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+CHECK (cosigned_by IS NULL OR cosigned_by <> user_id)
+);
+The full delta file (all tables, views, triggers) and the test script are handed over with this
+document. Two behaviours to remember when coding against it: triggers fire in an order
+SQLite does not promise, so a bad sale may report any one of its violations; and the app
+must compute row_hash before inserting because the append-only triggers refuse a later
+update.
+10.4 Period lock and business date
+day_close(branch_id, business_date) marks a locked day. A shop open past midnight
+needs a business date on invoices and movements, set from the shift, so a 12:30 am sale
+belongs to the day that is still open. Triggers (planned) refuse documents dated into a
+locked business date; corrections are new documents dated today that reference the
+locked one.
+11. Cross-role workflows end to end
+The five role sections describe one person at a time. Pharmacies lose money and
+compliance at the hand-offs between people, so this section follows five real chains from
+first touch to last record. Each step names the role, the event it emits and the guard that
+stops a bad step. Event names beyond the core catalog in 9.6 ( grn.posted ,
+transfer.dispatched , transfer.received , recall.opened , recall.cleared ) are
+Proposed defaults.
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 43 of 74
+
+-- 43 of 74 --
+
+11.1 Receive, sell, reorder: the daily loop
+# 	Step 	Role 	Event 	Guard
+1 	A reorder task
+fires because
+projected cover is
+below lead time
+plus review period
+(5.6)
+System,
+shown to
+Inventory
+Manager
+task.created 	Quantity is
+capped by
+expiry horizon
+so slow movers
+are not over-
+ordered
+2 	Purchase order
+approved or auto-
+approved under
+the branch limit
+Inventory
+Manager,
+Owner
+above limit
+approval.decided 	Maker-checker:
+the requester
+can never
+approve their
+own order
+3 	Goods arrive; the
+receiving cockpit
+checks each line
+against the order
+Inventory
+Manager
+grn.posted 	Batch number,
+expiry and MRP
+are mandatory;
+short-dated and
+cold-chain lines
+are flagged on
+entry
+4 	New batches sit in
+QUARANTINE
+until put-away is
+confirmed
+Inventory
+Manager
+batch.status_changed 	The database
+refuses a sale
+from any batch
+that is not
+AVAILABLE
+(10.1)
+5 	Put-away and
+front-shelf refill
+Inventory
+Manager
+stock.moved 	Location moves
+cannot exceed
+the source
+balance
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 44 of 74
+
+-- 44 of 74 --
+
+The loop is closed on purpose: the Owner sees the same numbers the Inventory Manager
+acts on, and the Cashier never needs to know about the order. What a Cashier does feeds
+the next order without a phone call.
+11.2 Recall and batch block
+A recall can come from a supplier, a regulator notice or an in-shop quality finding. Speed
+matters more than polish: the target is that no further unit of the batch is sold within
+minutes of the block reaching a shop node.
+# 	Step 	Role 	Event 	Guard
+6 	Cashier sells; the
+FEFO pick
+suggests the
+earliest valid
+batch
+Cashier 	sale.finalized 	Expired,
+recalled,
+quarantined or
+non-sellable
+stock is blocked
+at the database;
+price cannot
+exceed the
+batch MRP
+7 	The sale lowers
+cover; the
+projection
+recomputes
+reorder points
+System 	stock.moved 	Balances are
+derived from
+the ledger and
+can be rebuilt
+8 	Supplier invoice
+matched to the
+receipt; payable
+posted
+Inventory
+Manager,
+Owner
+views
+supplier.invoice_matched Price or
+quantity
+variance beyond
+tolerance opens
+an approval
+instead of
+posting
+9 	Cover drops again
+and step 1 repeats
+System 	task.created 	Tasks carry the
+"why" and the
+taka at risk
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 45 of 74
+
+-- 45 of 74 --
+
+1. Open. The Owner, or an Inventory Manager with the credential-free recall right, enters
+the product and batch (or scans a notice). The system emits recall.opened with the
+reason and source document.
+2. Block everywhere at once. The cloud pushes batch.status_changed to every branch
+of the tenant over the outbound link. A branch that is offline applies it at its next sync,
+and the Branch Manager gets a call-to-action to phone that shop. Until then the old
+rule stands, so the live board shows "offline, recall pending" in red.
+3. Find the stock. Each branch lists its on-hand quantity by location and the units already
+sold from the batch, using the sale lines and the dispensing register. The Cashier
+screen shows a hard stop if the batch is scanned.
+4. Contact customers. If the batch was dispensed to identified customers, the Branch
+Manager gets a call list. Contact is manual in v3.0; automated SMS is a later option and
+needs consent rules first (14.4).
+5. Quarantine and return. Physical stock moves to a RECALL location and a supplier-
+return document is raised. The return and its credit note post to the supplier ledger.
+6. Close. recall.cleared is allowed only when every branch has reported a zero
+balance or an approved write-off, and the Owner signs. The recall file (who found what,
+when, with photos) exports as a single pack for inspectors.
+11.3 Day close across roles
+Order Who 	What must be true before the next step
+1 	Each Cashier 	Blind count by denomination submitted; shift
+closed; cash drops cosigned
+2 	Inventory Manager Today's receipts posted, no GRN left in draft, count
+tasks due today done or consciously deferred
+3 	Branch Manager 	Variances explained or escalated; open approvals
+cleared; the exception list reviewed
+4 	Branch Manager 	Day-close wizard confirms the control totals: sales
+by payment method equal cash plus digital plus
+credit; stock ledger net equals balances
+5 	System 	Writes day.locked ; the business date closes and
+later edits need an approved reopen
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 46 of 74
+
+-- 46 of 74 --
+
+A lock does not stop the counter. Sales after the lock fall on the next business date, and a
+reopen is an approval with a reason that appears in the Owner's brief.
+11.4 Inter-branch transfer
+1. The requesting Branch Manager raises a transfer request; if the sending branch has
+stock the Inventory Manager there accepts it. Over the value limit the Owner
+approves.
+2. The sender picks by FEFO, prints the note and dispatches. Stock moves to an in-transit
+location owned by the tenant, not by either branch ( transfer.dispatched ).
+3. The receiver counts what arrived against the note. A short or damaged line opens a
+discrepancy with photos; it is not silently adjusted.
+4. transfer.received moves the stock into the receiver's RECEIVING location, where it
+needs put-away like any other receipt.
+5. In-transit stock older than the transfer window raises an alert to both Branch
+Managers and the Owner. Because stock is never in two places at once, a transfer
+cannot create phantom inventory.
+11.5 Leakage and fraud signals
+These are plain rules, not machine learning (principle 7). Each fires an alert.fired with
+its evidence and lands at the right level on the ladder in 7.9. Thresholds are Proposed
+defaults tuned per branch during the first 30 days.
+Order Who 	What must be true before the next step
+6 	Owner 	Receives the morning brief with the closed day,
+variance trend and anything the manager
+escalated
+Signal 	Rule 	Seen by first 	Typical response
+Void and return
+abuse
+Voids or returns per
+cashier per shift above
+the branch norm, or
+concentrated after
+payment
+Branch Manager 	Review receipts;
+requires reason code;
+escalate if repeated
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 47 of 74
+
+-- 47 of 74 --
+
+The system never accuses a person. It shows the evidence and the amount at risk, and the
+manager decides. Section 13 covers how staff are told what is monitored.
+Signal 	Rule 	Seen by first 	Typical response
+Discount drift 	Discount share of sales
+for one cashier far above
+peers, or discounts just
+under the approval limit
+Branch Manager 	Tighten the limit; coach
+Cash short
+pattern
+Repeated small
+shortages for one till, or
+shortages right after
+cash drops
+Branch Manager,
+Owner if
+repeated
+Blind counts, second
+counter at close
+Price override 	Selling below the allowed
+margin floor or above
+MRP attempt
+Branch Manager 	The database blocks
+above-MRP; below-
+floor needs approval
+Stock write-off
+clustering
+Write-offs on high-value
+or controlled items, or by
+one person
+Owner 	Recount with a
+different person
+Count variance Variance beyond the
+blind-recount threshold
+in 5.4
+Branch Manager 	Recount, then
+investigate
+Self-dealing 	A person who requested
+an approval tries to
+decide it, or shares a till
+login
+Owner 	Refused by design;
+logged
+Controlled-drug
+mismatch
+Register balance differs
+from stock ledger for any
+controlled item
+Branch Manager
+and Owner
+Stop dispensing that
+item until the
+pharmacist reconciles
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 48 of 74
+
+-- 48 of 74 --
+
+11.6 What each failure looks like to each role
+12. Intelligence layer
+The aim is not to look clever. It is to put the right job in front of the right person with the
+evidence beside it, so a shop owner can check the reasoning in ten seconds and say yes
+or no. Four rules govern every feature below.
+1. Rules first, statistics second, learning last. A feature starts as a transparent rule. It
+becomes a statistical baseline when data allows, and a trained model only if it beats
+that baseline in shadow mode for a full season without raising false alarms.
+2. Every suggestion carries its why. The card shows the inputs, the rule or formula that
+fired, the taka at risk and what happens if it is ignored.
+3. The system suggests; a person decides. Nothing orders, discounts, writes off or
+blocks a customer by itself. The only automatic refusals are the hard database guards
+in section 10.
+Situation 	Cashier 	Inventory
+Manager
+Branch
+Manager
+Owner
+Internet down Nothing changes 	Nothing
+changes
+except
+supplier sync
+Banner shows
+"offline since"
+Sees the shop as
+"last seen" with a
+stale-data label
+Branch node
+PC down,
+standby
+healthy
+Sees a reconnect
+for seconds, then
+continues
+Same 	Prompted to
+confirm
+promotion
+Alerted if
+promotion takes
+longer than the
+target
+Node and
+standby both
+down
+Falls back to
+emergency paper
+sales sheet and a
+later entry mode
+Receipts wait Called by the
+Owner
+Critical alert after
+the grace period
+Cloud outage Nothing changes 	Nothing
+changes
+Local
+approvals and
+codes still
+work
+Remote approvals
+unavailable; the
+offline challenge-
+response code is
+the path
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 49 of 74
+
+-- 49 of 74 --
+
+4. Feedback is data. Dismissing a card asks for a one-tap reason ("already handled",
+"wrong", "seasonal"). Dismissals tune thresholds and are reported to the Owner as an
+alert-quality score, so a noisy rule gets fixed rather than ignored.
+12.1 The feature set
+Feature 	Inputs 	Method 	Output and owner Phase
+Demand rate
+per product
+and branch
+Sale lines, stock-
+out days
+Weighted average
+of recent weeks
+with a day-of-week
+factor; days with
+zero stock are
+excluded so lost
+demand is not read
+as low demand
+Rate r used by
+reorder and expiry;
+the Inventory
+Manager can
+override it with a
+reason
+1
+Reorder
+suggestion
+Rate, lead time,
+review period, on-
+hand, on-order,
+expiry horizon
+The expiry-capped
+formula in 5.6
+A draft order line
+with its why and its
+cost; Inventory
+Manager
+1
+Expiry risk 	On-hand by batch,
+rate, days to expiry,
+cost
+Units at risk = on-
+hand − r × days left
+(never below zero),
+valued at cost per
+base unit
+Expiry board
+ranked by taka at
+risk, with actions:
+move to a busier
+branch, supplier
+return, discount
+within MRP, write-
+off
+1
+Dead and slow
+stock
+Last sale date,
+cover in days
+Rule: no sale in a
+set number of
+days, or cover
+beyond the expiry
+horizon
+Weekly list for the
+Inventory Manager
+1
+Stock-out early
+warning
+Rate, on-hand,
+supplier lead time
+Rule: cover below
+lead time and no
+order on the way
+Task with the lost-
+sales estimate
+1
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 50 of 74
+
+-- 50 of 74 --
+
+Feature 	Inputs 	Method 	Output and owner Phase
+Leakage rules 	Voids, returns,
+discounts, cash
+variances, write-
+offs
+The rules in 11.5
+against branch and
+peer baselines
+Alerts to Branch
+Manager, then
+Owner
+1
+Margin and
+price watch
+Batch cost, MRP,
+selling price,
+supplier price
+history
+Rule: cost rose
+above tolerance,
+margin below the
+floor, supplier price
+jumped
+Owner policy
+review and
+supplier
+negotiation list
+2
+Supplier
+scorecard
+Order lead time, fill
+rate, short-dated
+receipts, price
+changes, returns
+Transparent
+weighted score
+with every
+component visible
+Owner and
+Inventory Manager
+use it when
+choosing a
+supplier
+2
+Seasonal
+demand
+Prior-year same-
+period sales,
+owner-set season
+flags
+Seasonal factor on
+the rate when at
+least a year of
+history exists;
+otherwise the
+Owner flags a
+season by hand
+Reorder
+suggestions that
+rise before the
+season, not after
+2
+Statistical
+anomaly
+detection
+Per-branch daily
+series (sales, voids,
+variance)
+Robust median and
+spread against the
+branch's own
+history; no cross-
+shop learning of
+personal data
+Quieter, better-
+targeted alerts
+than fixed
+thresholds
+3
+Substitute
+suggestion at
+the counter
+Product catalogue,
+generic
+equivalence, stock
+Shows in-stock
+alternatives with
+the same generic
+name and strength;
+the pharmacist or
+licensed staff
+member confirms
+any substitution
+Faster counter
+with a safety gate
+3
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 51 of 74
+
+-- 51 of 74 --
+
+Assumption. Seasonal patterns such as Ramadan, Eid, the monsoon fever season and
+winter respiratory illness matter in Bangladesh, but their size per shop is unknown until
+real sales data exists. Phase 1 therefore asks the Owner to flag seasons by hand and only
+learns them after a full year.
+12.2 Why an explanation card, not a score
+A bare "risk 82" cannot be acted on and cannot be argued with. Every alert and task
+renders the same card.
+The card is the same shape for the Inventory Manager, Branch Manager and Owner, so a
+person who learns one learns all.
+12.3 Quality gates before a rule ships
+Backtest on real shop data from the pilot branches, reporting how many alerts would
+have fired per day and how many were useful.
+Alert budget. A new rule may not push a role above its daily limit (7.9); if it would, it
+must replace a weaker rule.
+Shadow period. A new rule runs silently for two weeks and logs what it would have said
+before anyone is shown it.
+Kill switch. Super Admin can disable a rule fleet-wide from the control plane, and an
+Owner can mute one for their tenant. Both are logged.
+Part 	Example wording
+What 	Batch of 10 strips will probably not sell before
+expiry
+Why 	700 tablets left; selling about 3 a day; 90 days to
+expiry
+Taka at risk The cost of the unsold units, valued per base unit
+as in the fixed expiry view
+If ignored 	Value written off after the expiry date
+Actions 	Move to another branch · Return to supplier ·
+Discount within MRP · Write off (needs approval)
+Feedback 	Done · Already handled · Wrong · Not now
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 52 of 74
+
+-- 52 of 74 --
+
+No personal profiling. Rules look at actions and amounts, never at a person's character.
+The system reports "voids at 3× branch norm on Tuesday", not "Rahim is suspicious".
+12.4 What the layer will not do
+Give clinical or dosing advice. Interaction and allergy warnings come only from a
+licensed reference source and stay a pharmacist's decision.
+Place orders or change prices without approval.
+Share one tenant's data with another tenant to improve models. Any cross-tenant
+benchmark is opt-in, aggregated and stripped of names; it is a Phase 3 option, not a
+default.
+13. Security, privacy, audit and compliance
+Security here has two jobs: stop outsiders, and make insiders (staff, managers, even the
+platform team) unable to cheat without leaving evidence. The design leans on structure,
+not on trust: separate databases, no inbound ports, append-only ledgers and maker-
+checker approvals.
+13.1 Threats and the control that answers each
+Threat 	Likely in a
+pharmacy?
+Control
+Cashier voids or discounts to
+pocket cash
+Very 	Reason codes, approval limits, blind
+close, leakage rules (11.5), append-
+only audit
+Manager and cashier collude 	Possible 	Owner-level alerts on patterns,
+cosigned drops, periodic recounts
+by a different person, Owner-only
+policy changes
+Stolen or sold shop PC 	Common 	SQLCipher at rest, key held in the
+OS credential store, device
+enrolment that the Owner can
+revoke, remote lock on next sync
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 53 of 74
+
+-- 53 of 74 --
+
+13.2 Identity and sessions
+Threat 	Likely in a
+pharmacy?
+Control
+Ransomware on the shop PC 	Real 	Encrypted offsite backups from the
+standby, restore drill, standby on a
+separate account and not a mapped
+share
+Lost or shared Owner phone 	Common 	Device binding, biometric or
+passcode, quick revoke from
+another enrolled device, recovery
+flow in 7.10
+Compromised cloud account 	Possible 	Multi-factor for Owner and Branch
+Manager, row-level security forced
+at the database, alerts on new
+device or country
+Rogue platform operator 	Low but severe 	Control plane has no grants on
+tenant data; support sessions are
+consented, time-boxed and logged
+(8.6)
+Malicious or faulty update 	Low but severe 	Signed releases, rings, health gates
+and automatic rollback (8.5)
+Fake supplier invoice or
+changed bank detail
+Common in trade Invoice matched to the receipt;
+bank-detail changes need approval
+and a cooling period
+Customer data leak 	Possible 	Field-level minimisation, masked
+display, export approvals, retention
+limits
+Role 	Sign-in on the counter or LAN 	Sign-in from outside the shop
+Cashier 	PIN or badge on the enrolled till;
+auto-lock on idle; locks at shift
+end
+Not allowed
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 54 of 74
+
+-- 54 of 74 --
+
+Assumption. SMS one-time codes are familiar to Bangladeshi users, but they are weaker
+than an authenticator app and depend on telecom delivery. Proposed default:
+authenticator or device-bound passkey first, SMS as a fallback the Owner can disable. A
+Phase 0 interview with pilot shops decides what they will actually use.
+Rules that apply everywhere: no shared accounts; a till session belongs to one person; a
+PIN is never the only factor for an action above the branch approval limit; lockout is rate-
+limited per account and per device; every sign-in, failure and approval is logged.
+13.3 Keys and secrets
+Role 	Sign-in on the counter or LAN 	Sign-in from outside the shop
+Inventory Manager 	PIN on an enrolled device,
+password for the web console
+Mobile app with device binding,
+read and task work only unless
+granted
+Branch Manager 	Password plus second factor on
+the manager console; PIN for
+quick approvals on the floor
+Mobile app with device binding
+Owner 	Password plus second factor 	Mobile app and web, device
+binding, new-device alerts,
+recovery rules in 7.10
+Super Admin and
+platform staff
+Not applicable 	Hardware-key or equivalent
+second factor, named accounts
+only, no shared logins
+Secret 	Where it lives 	Rotation and loss
+Branch database key OS credential store on the
+node, wrapped by a key the
+cloud can re-issue after Owner
+approval
+Rotated on device change; a lost
+node is rebuilt from the standby
+or the cloud event log
+Approver keys for
+offline codes
+Per approver and per branch,
+on the approver's device
+Revoked with the device; codes
+expire in five minutes and are
+single use (3.6)
+Cloud database
+credentials
+Secrets manager, never on shop
+machines
+Rotated on schedule and after
+any staff change on the platform
+team
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 55 of 74
+
+-- 55 of 74 --
+
+SQLCipher compatibility with the chosen backup path is unverified, so a Phase 0 spike
+must prove encrypted backup and restore end to end before any pilot shop holds real
+data.
+13.4 The audit trail
+What is recorded: every sign-in, approval request and decision, price or policy change,
+void, return, write-off, adjustment, cash drop, day close or reopen, role change, device
+enrolment, export, support session and recall action.
+How: one append-only table per branch with a hash chain, so removing or editing a row
+breaks the chain. Triggers refuse updates and deletes (10.1, tested). The cloud holds a
+second copy built from synced events; a mismatch between the two raises a critical
+alert.
+Who reads it: Branch Manager for the branch, Owner for the tenant, and an Auditor
+guest with a time-limited read-only link. Super Admin sees only platform actions, never
+tenant rows.
+Retention: Proposed default of at least the longest period any applicable rule requires,
+to be confirmed in the compliance matrix (13.6) before launch. Customer personal
+fields are minimised earlier than financial records.
+Export: the inspection pack in 6.7 and a tamper check report that proves the chain is
+intact.
+Secret 	Where it lives 	Rotation and loss
+Node-to-cloud
+credential
+Per-node client certificate or
+token, outbound only
+Revocable by Owner or Super
+Admin; stops syncing
+immediately
+Release signing key 	Offline or hardware-protected,
+held by two named people
+Rotation plan tested before the
+first public release
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 56 of 74
+
+-- 56 of 74 --
+
+13.5 Privacy
+Staff transparency. The app tells each staff member, in plain Bangla and English, what
+is recorded about their actions and who can see it. Monitoring that staff do not know
+about is not shipped.
+Customer rights. The system supports correcting a customer record and removing
+optional personal fields; sale, stock and register records are retained as the rules
+require.
+Assumption. Bangladesh has been moving toward a general data protection law. I could
+not confirm its current status or its exact duties from sources opened for this
+document, so the compliance matrix keeps an open row for it. Legal counsel should
+confirm before launch.
+13.6 The compliance matrix
+Every regulatory duty becomes one row with an owner and a test, so compliance is a
+checklist the product can pass, not a hope. The Phase 0 deliverable is the filled matrix.
+Data 	Sensitivity 	Handling
+Prescription and medicine history
+tied to a person
+High (health
+data)
+Collected only when needed,
+shown masked by default, access
+logged, never used for marketing,
+excluded from any cross-tenant
+analysis
+Customer name, phone, credit
+balance
+Medium 	Needed for credit customers;
+unlock requires a reason; export
+needs approval
+Staff records 	Medium 	Visible to Owner and the person's
+own manager only
+Sales and stock 	Business-
+confidential
+Tenant-scoped by row-level
+security and by the separate
+branch database
+Platform telemetry 	Low 	Versions, health, error counts; no
+names, no patient data, no sale
+lines
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 57 of 74
+
+-- 57 of 74 --
+
+The Chattogram report and the FAOLEX entry cited earlier describe the regulatory
+setting; neither replaces reading the current text.
+13.7 Incident handling
+Duty 	Where the product meets it 	Status
+Licensed pharmacist present
+when prescription medicine
+is dispensed
+Pharmacist-on-duty gate and
+credential (3.7)
+Designed; legal wording to
+confirm
+Controlled-drug dispensing
+register
+Hash-chained register,
+mismatch alert (11.5)
+Designed; format to
+confirm against current rule
+Prescription-only items
+recorded with prescriber
+and patient
+Required fields on those
+lines
+Designed; field list to
+confirm
+Licence validity and renewal
+reminders
+Pharmacist credential with
+expiry tasks
+Renewal period under the
+2023 Act is unverified:
+flagged for counsel
+Tax invoice content and
+retention
+Invoice template and
+retention rule
+Required fields to confirm
+with the tax authority's
+current rules
+Recall handling and batch
+traceability
+Batch status, recall workflow
+(11.2)
+Designed
+Cold-chain and temperature
+records
+Temperature log tables
+designed, not yet in the
+tested delta
+Designed
+Inspection readiness 	Inspection pack (6.7) 	Designed
+Event 	First action 	Who is told 	Clock
+Lost or stolen till
+or phone
+Owner or Branch
+Manager revokes the
+device from any other
+enrolled device
+Owner, Branch
+Manager
+Immediately; the node
+enforces on next
+contact
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 58 of 74
+
+-- 58 of 74 --
+
+A yearly restore drill and a yearly access review are part of the operating plan, not a nice-
+to-have.
+14. Non-functional requirements, UX standards and Bangla-first
+rules
+Every number here is a Proposed default: a target to prove or revise in the Phase 0 spikes
+on the real hardware shops use, not a measured result. Where a figure is missing it is
+because nothing in the sources supports one.
+14.1 Performance, reliability and capacity
+Event 	First action 	Who is told 	Clock
+Suspected
+insider fraud
+Freeze the person's role,
+preserve the audit chain,
+export evidence
+Owner 	Same day
+Suspected data
+breach
+Isolate the tenant's
+access path, rotate keys,
+snapshot logs
+Owner, Super
+Admin on call,
+counsel
+Start at once;
+notification duties per
+law, to be confirmed
+Ransomware on
+shop PC
+Disconnect, promote
+the standby, restore
+from backup if needed
+Branch Manager,
+Owner
+Counter keeps selling
+on the standby
+Bad release 	Halt the ring, roll back
+automatically on a failed
+health gate
+Super Admin,
+affected Owners
+Within the ring's health
+window
+Area 	Requirement 	How it is proven
+Counter speed 	A scan adds a line with no
+perceptible wait; finalising a sale
+and starting the next takes a few
+seconds; no screen blocks on the
+network
+Timed runs on a low-end counter
+PC with 50,000 products loaded
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 59 of 74
+
+-- 59 of 74 --
+
+14.2 Hardware floor and environment
+Area 	Requirement 	How it is proven
+Offline operation 	Selling, receiving, counting,
+approving with local PINs and
+offline codes all work with no
+internet for the whole business
+day and for several days beyond
+Pull-the-cable test with a full day
+of scripted traffic
+Sync lag 	Under normal internet the cloud is
+seconds behind the shop; after an
+outage it catches up in order
+without duplicates
+Replay test with duplicate and
+out-of-order delivery
+Power cuts 	A cut during a sale loses at most
+the unfinished line, never a
+finalised sale or a half-written
+stock movement
+Repeated hard power-off during
+writes, then integrity and ledger-
+versus-balance checks
+Recovery point
+and time
+Standby promotion and restore
+targets are set by the Phase 0
+spike (9.2)
+Timed promotion drills, restore
+from backup on a clean machine
+Data growth 	A shop with years of sales stays
+fast: archive rules keep the
+working set small and reports
+read projections, not raw lines
+Load test with several years of
+generated data
+Cloud availability 	The cloud is not on the selling
+path, so its availability sets
+reporting freshness, not revenue
+Chaos test: cloud unreachable for
+a full day
+Multi-tenant
+fairness
+One tenant's heavy report cannot
+slow another
+Per-tenant query limits and load
+tests
+Item 	Assumption to validate
+Counter PC Older Windows desktop or laptop, modest
+memory, spinning disk possible; the app must not
+need a modern machine
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 60 of 74
+
+-- 60 of 74 --
+
+14.3 UX standards that apply to every screen
+1. One screen, one job. A screen answers a single question or completes a single task,
+and the next action is the most visible thing on it.
+2. Keyboard-first for the counter, touch-friendly for everything else. Every counter
+action has a key; touch targets elsewhere are large enough for a busy hand.
+3. Defaults do the work. The most common choice is preselected; the Cashier changes
+things by exception.
+4. Say what happened and what to do. Errors name the cause in plain words and offer
+the next step ("This batch expired on 31 March. Choose another batch"), never a code
+alone.
+5. Undo before confirm. Reversible steps (hold a sale, remove a line) just happen. Only
+irreversible ones ask for confirmation, and policy-gated ones route to approval.
+6. Colour never carries meaning alone. Red, amber and green always come with an icon
+and a word.
+7. Calm density. Dense where speed matters (the counter, the work queue), roomy
+where decisions matter (approvals, policy changes).
+8. No dead ends offline. Any screen that needs the cloud says so, shows the last known
+data with its age, and offers what can be done locally.
+Item 	Assumption to validate
+Peripherals Barcode scanner as a keyboard, thermal receipt
+printer, cash drawer on the printer, optional
+customer display
+Network 	A single shop router with a LAN that works without
+internet; internet may be mobile data and drop
+daily
+Mobile 	Android phones and tablets for stock work, counts
+and manager views; modest cameras for barcode
+scanning
+Power 	Frequent outages; the node PC runs behind a small
+UPS in the shop
+Printing 	Receipts must print in Bangla and English; see 14.4
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 61 of 74
+
+-- 61 of 74 --
+
+9. The same card everywhere. Tasks, alerts and approvals share one layout (12.2) so
+people learn it once.
+10. Teach in context. First-use hints appear where the action happens; no separate
+manual is needed to sell on day one.
+14.4 Bangla-first rules
+Bangla is the default for the staff who use the product every day, not a translation added
+later.
+Rule 	Detail
+Language switch 	Bangla and English at every level: a user picks per
+account, and the choice follows them across
+devices
+Numbers 	Western or Bangla digits as a per-user choice; input
+accepts either; amounts use the Bangladeshi lakh
+and crore grouping when shown in Bangla
+Money 	Taka symbol and minor units stored as integers (as
+in the schema); rounding rules are explicit per
+document type
+Dates 	Gregorian by default with the Bangla calendar as
+an optional display; stored as UTC with the branch
+offset (10.1)
+Fonts 	A Bangla font that renders conjuncts correctly on
+low-end screens and in print; tested on every
+target device
+Search 	Medicine search works in English, in Bangla and
+with common misspellings; brand names usually
+stay in Latin script, so the index holds both
+Receipts 	Receipts print in Bangla by rendering the text as an
+image when the printer lacks Bangla support;
+layout tested on the actual thermal printers
+Messages 	Alerts, approval prompts and error text are
+authored in Bangla by a person who knows
+pharmacy language, not machine-translated
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 62 of 74
+
+-- 62 of 74 --
+
+14.5 Accessibility and comfort
+Text sizes adjustable without breaking layouts; high-contrast theme for bright shop
+lighting; night mode for phones.
+Screens usable with one hand on mobile; confirmations reachable with a thumb.
+Sounds are optional; the scanner beep and a failure tone are the only defaults.
+14.6 Adoption: switching from what shops use today
+Import in an hour. The onboarding factory in 8.7 reads product lists, supplier lists and
+opening stock from spreadsheets, with a preview that flags missing batch numbers,
+expiry dates and MRPs before anything is saved.
+Parallel run. The first week can run beside the old system or paper book, with a daily
+reconciliation screen.
+First-day mode. A guided sale, a guided receipt and a guided close, each short enough
+to finish in one sitting.
+Pilot success test. A new Cashier completes a normal sale without help after a short
+guided session; the target time is set in Phase 0 and measured, not assumed.
+14.7 Quality plan
+Rule 	Detail
+SMS and push 	Bangla Unicode messages are shorter per segment
+than English, so templates are short and the cost
+per message is part of the plan price
+Voice and low literacy Icons plus short words on the counter; no screen
+depends on long reading
+Test type 	What it protects
+Ledger property tests 	Stock balances always equal the sum of
+movements; no negative stock unless the setting
+allows it (the tested SQL in 10.3 is the seed)
+Pull-the-plug and pull-the-cable tests Power loss and internet loss at every step of a sale,
+a receipt and a close
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 63 of 74
+
+-- 63 of 74 --
+
+15. Roadmap, team and success metrics
+For a solo, JavaScript-first build in fifteen small phases that climb in difficulty, with the
+role gains and gates for each, see the companion document Phased Build PRD: Pharmacy
+SaaS, JavaScript-first for a solo builder. This section stays the team-scale roadmap.
+The plan is ordered by risk, not by feature count. The things most likely to sink the
+product (offline correctness, backup and standby, Bangla printing, real shop hardware)
+are proven first, and the first phase to hold real shop data starts only after its gate. No
+dates are given because none can be defended before Phase 0 produces measurements;
+each gate is a condition, and the schedule is set from the first spike results.
+Test type 	What it protects
+Sync torture tests 	Duplicates, reordering, long gaps, clock skew, a
+node restored from backup
+Role and approval matrix tests 	Every cell of the capability matrix in 3.3 is a test,
+including the refusals
+Isolation tests 	A tenant, branch or role that should not see data
+cannot, even with a crafted request
+Hardware lab 	Real scanners, printers, cash drawers and cheap
+Android devices
+Bangla rendering tests 	Screens and receipts with conjuncts, long names
+and mixed scripts
+Usability sessions 	Five people per role in each phase using the real
+product on shop hardware
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 64 of 74
+
+-- 64 of 74 --
+
+15.1 What each phase delivers
+roadmap · 4 phases, 4 gates
+Phase 	Delivers 	By role 	Gate to leave the phase
+0. Prove 	Spikes: logical standby
+and promotion,
+SQLCipher with
+encrypted backup and
+restore, the bKash
+counter flow, the free-
+goods scheme, the
+licence-renewal period,
+Bangla thermal receipts,
+speed on a low-end PC.
+The filled compliance
+matrix (13.6). A few pilot
+shops agreed and their
+data collected
+Super Admin: a
+minimal operations
+console only
+Every spike target met,
+or the design changed
+and the change written
+into this PRD
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 65 of 74
+
+-- 65 of 74 --
+
+What is deliberately not in v3.0: a public marketplace, automated customer SMS
+campaigns, e-prescription integrations, insurance claims, and machine-learned
+forecasting. Each needs its own legal or data groundwork and none is needed to beat the
+shop's current software.
+Phase 	Delivers 	By role 	Gate to leave the phase
+1. One shop Branch node with the
+tested SQL guards;
+Cashier counter flow;
+Inventory Manager
+receiving, put-away and
+work queue; local PIN
+approvals; day close;
+import from
+spreadsheets; Owner
+morning brief in its
+simplest form
+Cashier and Inventory
+Manager complete;
+Branch Manager gets
+the day-close wizard;
+Owner gets the brief
+A pilot shop runs a full
+month with the ledger
+equal to balances
+every day, no sale lost
+to an outage, and the
+Cashier needing no
+help
+2. Many
+branches
+Branch Manager console
+and live board; remote
+approvals and offline
+codes; transfers; recall;
+supplier ledger and
+procurement formulas;
+Owner cockpit, policy
+centre and alert ladder;
+hot standby in
+production
+Branch Manager and
+Owner complete;
+Inventory Manager
+gets counts and the
+expiry board in full
+An Owner approves
+from a phone in a real
+shop, a standby
+promotion drill passes,
+and the alert-quality
+score is acceptable
+3. The fleet Fleet console, release
+rings with health gates,
+consented support
+sessions, entitlements
+and billing, onboarding
+factory, statistical alerts,
+Auditor and Inspector
+guests
+Super Admin complete A deliberately bad
+build is stopped by a
+health gate and rolled
+back with no shop
+affected
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 66 of 74
+
+-- 66 of 74 --
+
+15.2 The team this implies
+Assumption. This is a shape, not a headcount, and the sources contain no staffing data. A
+small team can carry it if the roles below are covered by someone.
+15.3 Success metrics per role
+Targets sit in each role's own section (4.8, 5.8, 6.9, 7.11 and section 8). This table is the short
+list the leadership team watches. Every figure is measured on pilot shops before it is
+promised to anyone.
+Capability 	Why it is needed
+Product owner who has run a pharmacy
+counter
+Judges every flow against real shop behaviour
+Licensed pharmacist adviser 	Owns the compliance matrix and the
+pharmacist gates
+Full-stack TypeScript engineers 	Branch node, cloud and screens share one
+domain core
+Platform engineer 	Sync, standby, releases, observability,
+backups
+Quality engineer with a hardware lab 	Power-cut, cable-pull and device tests on real
+scanners and printers
+Bangla designer and writer 	Bangla-first interface text and receipts, read
+by pharmacy staff
+Support and onboarding lead 	Turns pilot shops into reference shops and
+feeds problems back
+Role 	Question the metric
+answers
+Metric 	Where the
+target is set
+Cashier 	Is the counter faster and
+safer?
+Time per normal sale; sales
+blocked correctly by the
+guards; wrong-batch and
+wrong-price incidents
+4.8
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 67 of 74
+
+-- 67 of 74 --
+
+One number for the whole product (Proposed default). Avoidable loss prevented per
+branch per month, in taka: expiry written off that a rule had flagged in time and a person
+acted on, cash variance caught the same day, and shrinkage found by counts. It is the
+figure an Owner can compare against the subscription price.
+15.4 Dependencies that decide the order
+1. The ledger, guards and sync envelope (sections 9 and 10) come before any screen,
+because every role reads from them.
+2. Approvals come before the Branch Manager and Owner features, because those
+screens are mostly approval and policy surfaces.
+3. Tasks and alerts come before the intelligence layer; a rule without a card to show it is
+invisible.
+Role 	Question the metric
+answers
+Metric 	Where the
+target is set
+Inventory
+Manager
+Is the stock record true
+and is money stuck on
+shelves?
+Inventory record accuracy
+at least 98%; cost of expired
+stock as a share of
+purchases; stock-out days
+5.8
+Branch
+Manager
+Is the branch controlled
+without the manager being
+glued to a screen?
+Day-close time; approval
+turnaround; unexplained
+variance
+6.9
+Owner 	Does the owner know,
+from a phone, what
+happened and what to do?
+Brief opened daily; alerts
+acted on versus dismissed;
+avoidable loss found per
+branch
+7.11
+Super Admin Can a small team run many
+shops safely?
+Time to onboard a shop;
+rollback rate; support
+sessions per shop; tenant
+isolation test pass rate
+8
+Everyone 	Is the product trusted? 	Offline sales with zero data
+loss; ledger-versus-balance
+mismatches at zero; staff
+who say they would keep
+using it
+Pilot reviews
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 68 of 74
+
+-- 68 of 74 --
+
+4. The control plane's isolation is built before the first pilot shop, even though the full
+fleet console arrives last, since adding a boundary later is far costlier than building it
+first.
+16. Risks, assumptions and open questions
+This section lists what could make the plan wrong and what decides each doubt. Nothing
+here is hidden in other sections: every item marked Assumption above appears in 16.2
+with the way to settle it.
+16.1 Risk register
+Risk 	Why it matters 	Early signal 	Mitigation 	Owner
+Shops resist
+features that
+expose them to
+compliance or
+owner oversight
+The product's
+best controls
+(blind close,
+approvals, audit)
+are the ones a
+shop may dislike
+Pilot staff
+bypass the till,
+share logins or
+ask to switch
+features off
+Make the first
+value visible to
+staff (faster
+counter, fewer
+disputes), tell
+them plainly what
+is recorded (13.5),
+and let the Owner
+phase controls in
+by policy
+Product
+owner
+Offline and sync
+bugs lose or
+duplicate data
+Trust is lost
+permanently
+after one lost
+sale
+Ledger-versus-
+balance
+mismatch;
+duplicate
+invoices after
+reconnect
+Event ids,
+idempotent apply,
+sync torture
+tests, daily
+integrity check,
+Gate 1
+Platform
+engineer
+Hot standby
+does not meet
+its targets on
+real shop PCs
+The offline-first
+promise
+depends on it
+Promotion drills
+overshoot or
+corrupt
+Phase 0 spike; fall
+back to the
+periodic
+encrypted copy
+plus a clearly
+stated recovery
+time
+Platform
+engineer
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 69 of 74
+
+-- 69 of 74 --
+
+Risk 	Why it matters 	Early signal 	Mitigation 	Owner
+SQLCipher does
+not work with
+the chosen
+backup tool
+Encryption at
+rest and
+continuous
+backup might
+not coexist
+Restore from
+encrypted
+backup fails
+Logical event-
+stream standby is
+the primary path;
+physical WAL
+shipping stays on
+reserve
+Platform
+engineer
+Bangla receipts
+or fonts fail on
+cheap printers
+and PCs
+Receipts are the
+customer-facing
+face of the
+product
+Garbled
+conjuncts in
+the hardware
+lab
+Image-rendered
+receipts, tested
+printer list,
+supported-
+hardware page
+Quality
+engineer
+Regulatory
+duties are
+misread
+Compliance
+claims would
+mislead the shop
+Counsel or
+pharmacist
+reviewer
+disagrees with
+a matrix row
+Phase 0
+compliance
+matrix signed off
+by a licensed
+pharmacist and
+counsel before
+any claim goes in
+marketing
+Pharmacist
+adviser
+Payment
+integrations
+(bKash, Nagad,
+cards) behave
+differently from
+the sandbox
+A counter flow
+that fails at
+payment is
+unusable
+Failed or
+duplicate
+payments in
+the pilot
+Treat each
+method as a
+spike; record
+payment status
+separately from
+sale status; allow
+cash-equivalent
+fallback with
+reconciliation
+Platform
+engineer
+Alert fatigue 	Owners mute
+everything and
+miss the real
+fraud
+Dismiss rate
+rising; alert-
+quality score
+falling
+Daily push cap,
+shadow period,
+dismissal
+reasons, rule kill
+switch (12.3)
+Product
+owner
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 70 of 74
+
+-- 70 of 74 --
+
+16.2 Assumptions and how each gets settled
+Risk 	Why it matters 	Early signal 	Mitigation 	Owner
+Support or
+platform staff
+abuse access
+A single breach
+of trust ends the
+business
+Support
+sessions
+without a ticket
+No grants on
+tenant data;
+consented, time-
+boxed sessions;
+logs the Owner
+can read
+Super
+Admin lead
+Scope grows
+faster than the
+team
+The role depth in
+this PRD is large
+Phase 1 slipping
+on non-gate
+items
+Gates are
+conditions;
+anything not on a
+gate waits;
+section 15.1 lists
+what is excluded
+Product
+owner
+Price pressure
+from cheap local
+software
+Many shops pay
+little or nothing
+for billing
+software
+Pilot shops
+compare on
+price only
+Sell the
+avoidable-loss
+number (15.3), not
+features; keep
+the single-shop
+plan simple
+Founder
+# 	Assumption 	How to settle it 	Owner and phase
+A1 	Counter PCs are older
+Windows machines on a
+shop LAN with intermittent
+internet
+Visit pilot shops and list the
+real hardware
+Quality engineer,
+Phase 0
+A2 	The bKash counter flow can
+be done without leaving the
+Cashier screen
+Build the sandbox spike
+against the provider's
+documented flow
+Platform engineer,
+Phase 0
+A3 	Free-goods schemes (for
+example bonus units from a
+supplier) are common
+enough to need effective-
+cost handling
+Ask pilot Owners and read
+real supplier invoices
+Product owner, Phase
+0
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 71 of 74
+
+-- 71 of 74 --
+
+Sources opened for this document were news reports, an official legislation record,
+vendor guidance and software repositories. A news date, such as the Business Standard
+item cited in section 2, should be checked against the live page before it is quoted
+externally.
+16.3 Phase 0 spike list
+Each spike has a pass criterion and an owner. None is closed until the result is written
+back into this document.
+# 	Assumption 	How to settle it 	Owner and phase
+A4 SQLCipher and a continuous
+backup approach can
+coexist
+Spike: encrypted write,
+backup, restore on a clean
+machine
+Platform engineer,
+Phase 0
+A5 	The licence renewal period
+under the 2023 Act can be
+modelled as a simple expiry
+task
+Counsel or pharmacist
+adviser reads the act and
+current rules
+Pharmacist adviser,
+Phase 0
+A6 	Authenticator or passkey
+sign-in is acceptable to
+Owners and managers; SMS
+stays a fallback
+Interview pilot Owners and
+managers
+Product owner, Phase
+0
+A7 	The taka approval
+thresholds in 3.4 fit a typical
+shop
+Calibrate on pilot sales
+data; policy centre lets
+each Owner change them
+Product owner, Phase 1
+A8 	Seasonal demand patterns
+can be learned after a year,
+and flagged by hand before
+that
+Compare hand flags with
+the first year of data
+Product owner, Phase
+2
+A9 	Staff accept being told what
+is recorded, and the Cashier
+can sell without help after a
+short session
+Usability sessions with five
+users per role
+Quality engineer, each
+phase
+A10 The Bangladeshi data
+protection duties are
+confirmable before launch
+Counsel review of the
+current law
+Pharmacist adviser
+with counsel, Phase 0
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 72 of 74
+
+-- 72 of 74 --
+
+16.4 Questions for the owner of this product
+These decisions are the founder's, and the plan does not need them to start Phase 0, but
+each one changes a later choice.
+1. Who are the first pilot shops? Their hardware and habits decide A1, A2 and A3 faster
+than any assumption here.
+2. Single-shop plan or chain-first? The document supports both; the first paying plan
+decides which role (Cashier or Owner) must be polished earliest.
+3. Cloud hosting region and budget. The control and data planes are specified, but the
+provider, region and cost ceiling are not.
+4. Brand and legal entity. The platform's terms, privacy notice and support promises
+depend on it.
+Spike 	Question 	Pass looks like
+Standby and
+promotion
+Can a logical event-stream
+standby take over on a real shop
+PC?
+Promotion within the target set
+in 9.2, no lost finalised sale,
+lease behaves under flaky Wi-Fi
+Encrypted backup
+and restore
+Does SQLCipher work with the
+backup path?
+A clean machine restores a full
+day with the ledger equal to
+balances
+Counter speed 	Is the counter fast on a low-end
+PC with a large catalogue?
+Scan and finalise timings meet
+14.1
+bKash at the counter Does the documented flow work
+with partial payment and
+refund?
+End-to-end sandbox run with
+failure cases
+Bangla receipt 	Do receipts print correctly on
+common thermal printers?
+Hardware lab passes on every
+listed printer
+Free-goods and
+effective cost
+Does the cost formula match
+real supplier invoices?
+Three real invoices reproduce
+the expected margin
+Compliance matrix 	Is every duty mapped to a
+feature and a test?
+Matrix signed off by the
+pharmacist adviser and counsel
+Sync torture 	Do duplicates, gaps and clock
+skew leave the ledger intact?
+Replay suite green
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 73 of 74
+
+-- 73 of 74 --
+
+5. Pricing model. Per branch, per user or per transaction changes what the Super Admin
+console must meter (8.3).
+Sources
+Links that were opened while writing this version. A source supports only the point it is
+cited for; the doc marks where the evidence is thin.
+The Business Standard, Proposed life term for manufacturers of fake drugs in
+Bangladesh
+UNB, Chemists, druggists demand 25% commission hike from pharmaceutical
+companies
+The Daily Star, report on pharmacy licensing in Chattogram
+FAOLEX via UNEP, Drugs and Cosmetics Act, 2023 (Act No. 29 of 2023)
+Cleverence, How to cycle count
+Relaso, Cash drawer management, shift closing and reconciliation
+Xenia, Cash handling procedures for retail
+PyPI, bkash-pgw-tokenized
+GitHub, Litestream
+Pharmacy SaaS Platform — Master PRD & Architecture v3.0 (Role-Centered)
+Page 74 of 74
+
+-- 74 of 74 --
+

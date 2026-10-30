@@ -1,4 +1,4 @@
-﻿import { http, HttpResponse } from 'msw/http'
+import { http, HttpResponse } from 'msw/http'
 import { medicineDB, ticketsDB } from './msDB.js'
 
 export const handlers = [
@@ -17,6 +17,14 @@ export const handlers = [
       return new HttpResponse(null, { status: 404, statusText: 'Ticket not found' })
     }
     return HttpResponse.json({ ticket })
+  }),
+
+  // 🎟️ 2b. Create Dispensing Ticket (Counter 1 -> Counter 2)
+  http.post('/api/tickets', async ({ request }) => {
+    const newTicket = await request.json()
+    console.log('[MSW] Intercepted POST /api/tickets', newTicket)
+    ticketsDB.unshift(newTicket)
+    return HttpResponse.json({ ticket: newTicket }, { status: 201 })
   }),
 
   // 📦 3. Medicines Inventory Catalog
