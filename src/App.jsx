@@ -7,6 +7,7 @@ import DispensingStation from './components/dispense/DispensingStation'
 import Footer from './components/layout/Footer'
 import PaymentModal from './components/cart/PaymentModal'
 import ReceiptPreview from './components/cart/ReceiptPreview'
+import ReceivingModal from './components/receiving/ReceivingModal'
 import { useCounterStore } from './stores/useCounterStore.js'
 import { useLiveClock } from './hooks/useLiveClock.js'
 import { usePosShortcuts } from './hooks/usePosShortcuts.js'
@@ -53,6 +54,7 @@ function App() {
       {/* 5. Modals: Only rendered when opened! */}
       {isPaymentOpen && activeTicket && <PaymentModal />}
       {isReceiptOpen && <ReceiptPreview />}
+      <ReceivingModal />
     </div>
   )
 }

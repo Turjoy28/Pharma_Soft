@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Money utilities for Bangladeshi Pharmacy POS
  * Rule: All financial arithmetic is performed in integer Poisha (1 Taka = 100 Poisha)
  * to avoid IEEE-754 floating-point rounding errors.
@@ -63,3 +63,34 @@ export function calculateCartTotals(items = [], discountPercent = 0) {
     },
   }
 }
+
+/**
+ * Validates purchase cost against Maximum Retail Price (MRP).
+ * Regulatory Rule (DGDA): Purchase cost cannot exceed Maximum Retail Price.
+ * 
+ * @param {number|string} cost - Purchase cost in Taka
+ * @param {number|string} mrp - Maximum Retail Price in Taka
+ * @returns {{
+ *   isValid: boolean,
+ *   isViolation: boolean,
+ *   errorMessage?: string
+ * }}
+ */
+export function validateCostAgainstMrp(cost, mrp) {
+  const costNum = Number(cost) || 0
+  const mrpNum = Number(mrp) || 0
+
+  if (costNum > 0 && mrpNum > 0 && costNum > mrpNum) {
+    return {
+      isValid: false,
+      isViolation: true,
+      errorMessage: `Cost (৳${costNum.toFixed(2)}) exceeds MRP (৳${mrpNum.toFixed(2)}). DGDA rules prohibit purchase cost exceeding MRP.`,
+    }
+  }
+
+  return {
+    isValid: true,
+    isViolation: false,
+  }
+}
+

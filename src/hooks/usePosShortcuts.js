@@ -6,6 +6,7 @@ import { useCounterStore } from '../stores/useCounterStore.js'
  * Central keyboard shortcut manager for POS operations:
  * - [F1] Toggle Counter Station (Counter 1 Dispense <-> Counter 2 Billing)
  * - [F2] Focus Search (Medicine in C1, Ticket in C2)
+ * - [F5] Toggle Stock Inward / Put-Away Workstation
  * - [F6] Open Cash Payment (Counter 2)
  * - [F8] Open Card Payment (Counter 2)
  * - [F9] Open bKash / Mobile Wallet Payment (Counter 2)
@@ -23,6 +24,9 @@ export function usePosShortcuts() {
   const closeReceipt = useCounterStore((s) => s.closeReceipt)
   const dispatchTicket = useCounterStore((s) => s.dispatchTicket)
   const dispenseBasket = useCounterStore((s) => s.dispenseBasket)
+  const isReceivingOpen = useCounterStore((s) => s.isReceivingOpen)
+  const closeReceiving = useCounterStore((s) => s.closeReceiving)
+  const toggleReceiving = useCounterStore((s) => s.toggleReceiving)
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -33,8 +37,20 @@ export function usePosShortcuts() {
         return
       }
 
+      // [F5]: Toggle Inbound Stock Receiving & Put-Away Workstation
+      if (e.key === 'F5') {
+        e.preventDefault()
+        toggleReceiving()
+        return
+      }
+
       // 2. [Escape]: Dismiss modals
       if (e.key === 'Escape') {
+        if (isReceivingOpen) {
+          e.preventDefault()
+          closeReceiving()
+          return
+        }
         if (isPaymentOpen) {
           e.preventDefault()
           closePayment()
@@ -121,5 +137,8 @@ export function usePosShortcuts() {
     closePayment,
     closeReceipt,
     dispatchTicket,
+    closeReceiving,
+    isReceivingOpen,
+    toggleReceiving,
   ])
 }

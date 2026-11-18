@@ -11,11 +11,9 @@ export const createTicketSlice = (set, get) => ({
   setActiveCounter: (counter) => set({ activeCounter: counter }),
 
   toggleActiveCounter: () =>
-    set((s) => {
-      console.log(s);
-
-      return {activeCounter: s.activeCounter === 'counter1' ? 'counter2' : 'counter1',}
-    }),
+    set((s) => ({
+      activeCounter: s.activeCounter === 'counter1' ? 'counter2' : 'counter1',
+    })),
 
   // 🎟️ 2. Prescription Tickets Queue State (Counter 2)
   tickets: [],

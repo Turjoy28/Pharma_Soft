@@ -1,5 +1,5 @@
-﻿import { describe, it, expect } from 'vitest'
-import { toPoisha, formatTaka, calculateCartTotals } from './money.js'
+import { describe, it, expect } from 'vitest'
+import { toPoisha, formatTaka, calculateCartTotals, validateCostAgainstMrp } from './money.js'
 
 describe('Pharmacy Money Math (Integer Poisha Rule)', () => {
   it('converts Taka to integer Poisha safely without floating-point errors', () => {
@@ -55,4 +55,26 @@ describe('Pharmacy Money Math (Integer Poisha Rule)', () => {
     expect(totals.totalPayablePoisha).toBe(0)
     expect(totals.formatted.totalPayable).toBe('0.00')
   })
+
+  describe('validateCostAgainstMrp', () => {
+    it('passes when cost is less than MRP', () => {
+      const res = validateCostAgainstMrp(5.80, 7.00)
+      expect(res.isValid).toBe(true)
+      expect(res.isViolation).toBe(false)
+    })
+
+    it('passes when cost equals MRP', () => {
+      const res = validateCostAgainstMrp(10.00, 10.00)
+      expect(res.isValid).toBe(true)
+      expect(res.isViolation).toBe(false)
+    })
+
+    it('flags DGDA violation when cost exceeds MRP', () => {
+      const res = validateCostAgainstMrp(8.50, 7.00)
+      expect(res.isValid).toBe(false)
+      expect(res.isViolation).toBe(true)
+      expect(res.errorMessage).toContain('Cost (৳8.50) exceeds MRP (৳7.00)')
+    })
+  })
 })
+

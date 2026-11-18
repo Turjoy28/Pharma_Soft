@@ -6,6 +6,8 @@ function Header({ currentTime }) {
   const ticketsCount = useCounterStore((s) => s.tickets.length)
   const dispenseBasketCount = useCounterStore((s) => s.dispenseBasket.length)
   const patientInfo = useCounterStore((s) => s.patientInfo)
+  const openReceiving = useCounterStore((s) => s.openReceiving)
+  const quarantineCount = useCounterStore((s) => s.quarantineQueue.length)
 
   const isC1 = activeCounter === 'counter1'
 
@@ -100,6 +102,23 @@ function Header({ currentTime }) {
           <span className="text-[11px] font-mono text-teal-300 bg-teal-900/70 px-1.5 py-0.5 rounded border border-teal-700">
             [F1] Switch
           </span>
+
+          {/* 📥 Quick Top-Bar Action: [F5] Stock Inward / Receiving Workstation */}
+          <button
+            type="button"
+            onClick={() => openReceiving('receipt')}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-xs shadow-xs border border-amber-300 transition-all cursor-pointer select-none"
+            title="Open Inbound Goods Receiving & Put-Away Workstation [F5]"
+          >
+            <span className="material-symbols-outlined text-[16px]">move_to_inbox</span>
+            <span>Stock Inward</span>
+            <span className="text-[10px] bg-amber-900 text-amber-200 px-1 py-0.2 rounded font-mono">[F5]</span>
+            {quarantineCount > 0 && (
+              <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-mono font-black" title={`${quarantineCount} items waiting in Quarantine`}>
+                {quarantineCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Pharmacist / Cashier Info & Live Clock */}

@@ -34,6 +34,10 @@ function ShortcutBar() {
             <span className="text-pharma-700 font-bold">[F4]</span>
             <span>Stock/Rack Locator</span>
           </div>
+          <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-300 rounded text-amber-900 font-semibold">
+            <span className="text-amber-700 font-bold">[F5]</span>
+            <span>Stock Inward</span>
+          </div>
           <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700">
             <span className="text-pharma-700 font-bold">[F7]</span>
             <span>Rx Scan / OCR</span>
@@ -87,6 +91,9 @@ function ShortcutBar() {
         </span>
         <span className="bg-slate-100 border border-slate-300 px-2 py-1 rounded text-slate-700">
           <strong className="text-pharma-700">[F4]</strong> Hold/Recall
+        </span>
+        <span className="bg-amber-50 border border-amber-300 px-2 py-1 rounded text-amber-900 font-semibold">
+          <strong className="text-amber-700">[F5]</strong> Stock Inward
         </span>
         <span className="bg-emerald-50 border border-emerald-300 px-2 py-1 rounded text-emerald-800 font-semibold">
           <strong className="text-emerald-700">[F6]</strong> Cash

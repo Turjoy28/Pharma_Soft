@@ -87,3 +87,59 @@ export const medicineService = {
     return response.data?.medicines || []
   },
 }
+
+/**
+ * 📥 Inbound Goods Receiving & Put-Away Service (Day 9)
+ */
+export const receivingService = {
+  /**
+   * Fetches official Bangladesh suppliers catalog
+   */
+  getSuppliers: async () => {
+    const response = await apiClient.get('/suppliers')
+    return response.data?.suppliers || []
+  },
+
+  /**
+   * Fetches physical store hierarchy tree and scannable flat bins
+   */
+  getLocations: async () => {
+    const response = await apiClient.get('/locations')
+    return response.data || { locations: [], bins: [] }
+  },
+
+  /**
+   * Fetches inbound delivery receipts history
+   */
+  getReceipts: async () => {
+    const response = await apiClient.get('/receipts')
+    return response.data?.receipts || []
+  },
+
+  /**
+   * Saves an inbound goods receipt/challan and places items in QUARANTINE
+   * @param {Object} receiptData
+   */
+  createReceipt: async (receiptData) => {
+    const response = await apiClient.post('/receipts', receiptData)
+    return response.data
+  },
+
+  /**
+   * Fetches pending items waiting in quarantine for put-away
+   */
+  getPutAwayQueue: async () => {
+    const response = await apiClient.get('/putaway')
+    return response.data || { queue: [], totalPacks: 0, totalBaseUnits: 0 }
+  },
+
+  /**
+   * Moves a quarantined item into a specific SELLABLE bin & updates inventory
+   * @param {{ itemId: string, targetBinId: string, notes?: string }} payload
+   */
+  executePutAway: async (payload) => {
+    const response = await apiClient.post('/putaway', payload)
+    return response.data
+  },
+}
+
