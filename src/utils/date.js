@@ -123,3 +123,26 @@ export function parseMonthYearExpiry(input, referenceDate = new Date()) {
     errorMessage: isExpired ? `Expired product (${displayDate}). Cannot receive expired stock into inventory.` : undefined,
   }
 }
+
+/**
+ * Calculates whole calendar days remaining until an ISO date (YYYY-MM-DD).
+ * Positive = future days left; 0 = expires today; negative = already expired.
+ *
+ * @param {string} isoDate - e.g. "2026-12-15"
+ * @param {Date} [referenceDate=new Date()]
+ * @returns {number} Integer calendar days difference
+ */
+export function getDaysUntilExpiry(isoDate, referenceDate = new Date()) {
+  if (!isoDate || typeof isoDate !== 'string') return 0
+  const [y, m, d] = isoDate.split('-').map(Number)
+  if (!y || !m || !d) return 0
+
+  const refUtc = Date.UTC(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate()
+  )
+  const expUtc = Date.UTC(y, m - 1, d)
+  return Math.round((expUtc - refUtc) / (1000 * 60 * 60 * 24))
+}
+

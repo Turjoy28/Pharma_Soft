@@ -143,3 +143,47 @@ export const receivingService = {
   },
 }
 
+/**
+ * 🗺️ Stock by Location & Expiry Risk Board Service (Day 10)
+ */
+export const inventoryService = {
+  /**
+   * Fetches aggregated physical stock tree (Zone -> Rack -> Shelf -> Bin)
+   */
+  getStockTree: async () => {
+    const response = await apiClient.get('/stock/tree')
+    return response.data
+  },
+
+  /**
+   * Fetches batch balances inside a specific Zone, Rack, Shelf, or Bin
+   * @param {string} locationId
+   */
+  getByLocation: async (locationId) => {
+    const response = await apiClient.get(`/stock/by-location/${encodeURIComponent(locationId)}`)
+    return response.data
+  },
+
+  /**
+   * Fetches 30/60/90-day Expiry Risk Board (with optional rack filter)
+   * @param {string} [rackId='all']
+   */
+  getExpiryBoard: async (rackId = 'all') => {
+    const response = await apiClient.get('/expiry-board', { params: { rackId } })
+    return response.data
+  },
+
+  /**
+   * Applies an inventory mitigation action on a near-expiry batch
+   * @param {string} batchId
+   * @param {'fefo_push' | 'supplier_return' | 'discount'} action
+   */
+  applyExpiryAction: async (batchId, action) => {
+    const response = await apiClient.post(`/expiry-board/${encodeURIComponent(batchId)}/action`, {
+      action,
+    })
+    return response.data
+  },
+}
+
+

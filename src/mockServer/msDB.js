@@ -6,6 +6,7 @@ import {
   findBinById,
   getBinsByClass,
 } from './locationDB.js';
+import { stockBatchesDB } from './stockBatchesDB.js';
 
 // ── Mock Medicines Inventory Database ──
 export const medicineDB = [
@@ -491,6 +492,7 @@ export {
   findBinByCode,
   findBinById,
   getBinsByClass,
+  stockBatchesDB,
 };
 
 

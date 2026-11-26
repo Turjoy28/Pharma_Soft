@@ -8,6 +8,7 @@ import Footer from './components/layout/Footer'
 import PaymentModal from './components/cart/PaymentModal'
 import ReceiptPreview from './components/cart/ReceiptPreview'
 import ReceivingModal from './components/receiving/ReceivingModal'
+import InventoryModal from './components/inventory/InventoryModal'
 import { useCounterStore } from './stores/useCounterStore.js'
 import { useLiveClock } from './hooks/useLiveClock.js'
 import { usePosShortcuts } from './hooks/usePosShortcuts.js'
@@ -23,9 +24,10 @@ function App() {
   const isReceiptOpen = useCounterStore((s) => s.isReceiptOpen)
   const activeTicket = useCounterStore((s) => s.selectedTicket)
 
-  // Initial Mount: Initialize station (tickets & catalog in parallel)
+  // Initial Mount: Initialize station (tickets & catalog in parallel) + preload inventory/expiry metrics
   useEffect(() => {
     useCounterStore.getState().initStation()
+    useCounterStore.getState().fetchInventoryData()
   }, [])
 
   return (
@@ -55,6 +57,7 @@ function App() {
       {isPaymentOpen && activeTicket && <PaymentModal />}
       {isReceiptOpen && <ReceiptPreview />}
       <ReceivingModal />
+      <InventoryModal />
     </div>
   )
 }

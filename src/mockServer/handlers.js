@@ -10,7 +10,13 @@ import {
   getFlatBins,
   findBinById,
   findBinByCode,
+  stockBatchesDB,
 } from './msDB.js'
+import {
+  buildStockTree,
+  getBatchesByLocation,
+  buildExpiryBoard,
+} from '../utils/inventory.js'
 
 // ── Shared Resolvers for Inbound Receiving & Put-Away (Day 9) ──
 
@@ -266,7 +272,26 @@ const executePutAwayResolver = async ({ request }) => {
     medicineDB.push(matchedMed)
   }
 
-  // 6. Shrink the quarantine queue as lines are placed
+  // 6. Also register a batch balance record in Day 10 stockBatchesDB at targetBin
+  stockBatchesDB.push({
+    id: `batch-${Date.now()}`,
+    medId: matchedMed.id,
+    brandName: item.brandName,
+    generic: item.generic || item.brandName,
+    company: item.supplierName || 'Pharma Corp',
+    batchNo: item.batch,
+    binId: targetBin.id,
+    rackId: targetBin.rackId,
+    expiryDate: item.expiryDate,
+    qtyBase: item.totalBaseUnits,
+    costPerUnitPoisha: item.costPriceMinor || 0,
+    mrpPerUnitPoisha: item.mrpPriceMinor || 0,
+    status: LocationClass.SELLABLE,
+    dgdaTag: matchedMed.dgdaTag || 'DGDA',
+    actionStatus: null,
+  })
+
+  // 7. Shrink the quarantine queue as lines are placed
   quarantineQueueDB.splice(itemIndex, 1)
 
   return HttpResponse.json(
@@ -282,6 +307,89 @@ const executePutAwayResolver = async ({ request }) => {
     },
     { status: 200 }
   )
+}
+
+// ── Shared Resolvers for Stock Explorer & Expiry Board (Day 10) ──
+
+const getStockTreeResolver = () => {
+  console.log('[MSW] Intercepted GET /v1/stock/tree')
+  const tree = buildStockTree(locationTreeDB, stockBatchesDB)
+  return HttpResponse.json({
+    success: true,
+    ...tree,
+  })
+}
+
+const getStockByLocationResolver = ({ params }) => {
+  const { id } = params
+  console.log(`[MSW] Intercepted GET /v1/stock/by-location/${id}`)
+  const detail = getBatchesByLocation(id, locationTreeDB, stockBatchesDB)
+  if (!detail) {
+    return HttpResponse.json(
+      { code: 'LOCATION_NOT_FOUND', message: `Location '${id}' not found.` },
+      { status: 404 }
+    )
+  }
+  return HttpResponse.json({
+    success: true,
+    ...detail,
+  })
+}
+
+const getExpiryBoardResolver = ({ request }) => {
+  const url = new URL(request.url)
+  const rackId = url.searchParams.get('rackId') || 'all'
+  console.log(`[MSW] Intercepted GET /v1/expiry-board?rackId=${rackId}`)
+  const board = buildExpiryBoard(stockBatchesDB, locationTreeDB, { rackId })
+  return HttpResponse.json({
+    success: true,
+    ...board,
+  })
+}
+
+const applyExpiryActionResolver = async ({ params, request }) => {
+  const { batchId } = params
+  const body = await request.json()
+  const { action } = body || {}
+  console.log(`[MSW] Intercepted POST /v1/expiry-board/${batchId}/action`, action)
+
+  const batch = stockBatchesDB.find((b) => b.id === batchId)
+  if (!batch) {
+    return HttpResponse.json(
+      { code: 'BATCH_NOT_FOUND', message: `Batch ${batchId} not found.` },
+      { status: 404 }
+    )
+  }
+
+  let message = ''
+  if (action === 'fefo_push') {
+    batch.actionStatus = 'FEFO_FRONTLINE'
+    const med = medicineDB.find((m) => m.id === batch.medId)
+    if (med) {
+      med.fefoTag = `FEFO PRIORITY • ${batch.batchNo}`
+    }
+    message = `Marked ${batch.brandName} (${batch.batchNo}) as FEFO Priority #1 for Counter 1 dispensing.`
+  } else if (action === 'supplier_return') {
+    batch.actionStatus = 'RETURN_PENDING'
+    batch.status = LocationClass.EXPIRED
+    batch.binId = 'bin-D01-S01-B02'
+    batch.rackId = 'rack-D01'
+    message = `Moved ${batch.brandName} (${batch.batchNo}, ${batch.qtyBase} units) to Zone D Return Holding for ${batch.company} credit note.`
+  } else if (action === 'discount') {
+    batch.actionStatus = 'DISCOUNT_10_PCT'
+    message = `Applied 10% clearance markdown (within DGDA MRP) on ${batch.brandName} (${batch.batchNo}).`
+  } else {
+    return HttpResponse.json(
+      { code: 'INVALID_ACTION', message: `Unknown expiry action '${action}'.` },
+      { status: 400 }
+    )
+  }
+
+  return HttpResponse.json({
+    success: true,
+    message,
+    batch,
+  })
 }
 
 export const handlers = [
@@ -415,4 +523,24 @@ export const handlers = [
   http.post('/api/putaway', executePutAwayResolver),
   http.post('/v1/putaway', executePutAwayResolver),
   http.post('/api/v1/putaway', executePutAwayResolver),
+
+  // 🗺️ 11. Day 10: Stock Tree (GET /v1/stock/tree)
+  http.get('/api/stock/tree', getStockTreeResolver),
+  http.get('/v1/stock/tree', getStockTreeResolver),
+  http.get('/api/v1/stock/tree', getStockTreeResolver),
+
+  // 📍 12. Day 10: Stock by Location Detail (GET /v1/stock/by-location/:id)
+  http.get('/api/stock/by-location/:id', getStockByLocationResolver),
+  http.get('/v1/stock/by-location/:id', getStockByLocationResolver),
+  http.get('/api/v1/stock/by-location/:id', getStockByLocationResolver),
+
+  // ⏳ 13. Day 10: Expiry Risk Board (GET /v1/expiry-board)
+  http.get('/api/expiry-board', getExpiryBoardResolver),
+  http.get('/v1/expiry-board', getExpiryBoardResolver),
+  http.get('/api/v1/expiry-board', getExpiryBoardResolver),
+
+  // ⚡ 14. Day 10: Expiry Board Mitigation Action (POST /v1/expiry-board/:batchId/action)
+  http.post('/api/expiry-board/:batchId/action', applyExpiryActionResolver),
+  http.post('/v1/expiry-board/:batchId/action', applyExpiryActionResolver),
+  http.post('/api/v1/expiry-board/:batchId/action', applyExpiryActionResolver),
 ]

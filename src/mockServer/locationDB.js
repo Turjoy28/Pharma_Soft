@@ -146,6 +146,22 @@ export const locationTreeDB = [
           },
         ],
       },
+      {
+        id: "rack-A05",
+        code: "RACK-A05",
+        name: "Rack A-05: Seasonal & New Arrival Reserve (Empty)",
+        shelves: [
+          {
+            id: "shelf-A05-S01",
+            code: "A05-S01",
+            name: "Shelf 01 (Reserve Overflow)",
+            bins: [
+              { id: "bin-A05-S01-B01", code: "A05-S01-B01", name: "Bin 01: Open Reserve Bin #1", locationClass: LocationClass.SELLABLE, capacity: 200, current: 0 },
+              { id: "bin-A05-S01-B02", code: "A05-S01-B02", name: "Bin 02: Open Reserve Bin #2", locationClass: LocationClass.SELLABLE, capacity: 200, current: 0 },
+            ],
+          },
+        ],
+      },
     ],
   },
   {

@@ -8,6 +8,8 @@ function Header({ currentTime }) {
   const patientInfo = useCounterStore((s) => s.patientInfo)
   const openReceiving = useCounterStore((s) => s.openReceiving)
   const quarantineCount = useCounterStore((s) => s.quarantineQueue.length)
+  const openInventory = useCounterStore((s) => s.openInventory)
+  const criticalExpiryCount = useCounterStore((s) => s.expiryBoard?.summary?.criticalCount || 0)
 
   const isC1 = activeCounter === 'counter1'
 
@@ -116,6 +118,23 @@ function Header({ currentTime }) {
             {quarantineCount > 0 && (
               <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-mono font-black" title={`${quarantineCount} items waiting in Quarantine`}>
                 {quarantineCount}
+              </span>
+            )}
+          </button>
+
+          {/* 🗺️ Quick Top-Bar Action: [F10] Stock Tree & Expiry Risk Board */}
+          <button
+            type="button"
+            onClick={() => openInventory('tree')}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-teal-900/90 hover:bg-teal-700 text-white font-bold text-xs shadow-xs border border-teal-400/60 transition-all cursor-pointer select-none"
+            title="Open Stock by Location Tree & Expiry Risk Board [F10]"
+          >
+            <span className="material-symbols-outlined text-[16px] text-teal-200">inventory_2</span>
+            <span>Stock &amp; Expiry</span>
+            <span className="text-[10px] bg-teal-950 text-teal-200 px-1 py-0.2 rounded font-mono">[F10]</span>
+            {criticalExpiryCount > 0 && (
+              <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-mono font-black" title={`${criticalExpiryCount} batches expiring within 30 days`}>
+                {criticalExpiryCount}
               </span>
             )}
           </button>

@@ -10,6 +10,7 @@ import { useCounterStore } from '../stores/useCounterStore.js'
  * - [F6] Open Cash Payment (Counter 2)
  * - [F8] Open Card Payment (Counter 2)
  * - [F9] Open bKash / Mobile Wallet Payment (Counter 2)
+ * - [F10] Toggle Stock Tree & Expiry Risk Board
  * - [F12] Counter 1: Dispatch Ticket | Counter 2: Settle & Open Drawer
  * - [Escape] Dismiss open payment or receipt modals
  */
@@ -27,6 +28,9 @@ export function usePosShortcuts() {
   const isReceivingOpen = useCounterStore((s) => s.isReceivingOpen)
   const closeReceiving = useCounterStore((s) => s.closeReceiving)
   const toggleReceiving = useCounterStore((s) => s.toggleReceiving)
+  const isInventoryOpen = useCounterStore((s) => s.isInventoryOpen)
+  const closeInventory = useCounterStore((s) => s.closeInventory)
+  const toggleInventory = useCounterStore((s) => s.toggleInventory)
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -44,8 +48,20 @@ export function usePosShortcuts() {
         return
       }
 
+      // [F10]: Toggle Stock Explorer & Expiry Risk Board
+      if (e.key === 'F10') {
+        e.preventDefault()
+        toggleInventory()
+        return
+      }
+
       // 2. [Escape]: Dismiss modals
       if (e.key === 'Escape') {
+        if (isInventoryOpen) {
+          e.preventDefault()
+          closeInventory()
+          return
+        }
         if (isReceivingOpen) {
           e.preventDefault()
           closeReceiving()
@@ -140,5 +156,8 @@ export function usePosShortcuts() {
     closeReceiving,
     isReceivingOpen,
     toggleReceiving,
+    closeInventory,
+    isInventoryOpen,
+    toggleInventory,
   ])
 }

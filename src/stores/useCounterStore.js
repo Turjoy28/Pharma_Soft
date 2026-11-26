@@ -3,6 +3,7 @@ import { createTicketSlice } from './slices/ticketSlice.js'
 import { createCartSlice } from './slices/cartSlice.js'
 import { createPaymentSlice } from './slices/paymentSlice.js'
 import { createReceivingSlice } from './slices/receivingSlice.js'
+import { createInventorySlice } from './slices/inventorySlice.js'
 
 /**
  * 🏪 Counter Store
@@ -11,10 +12,12 @@ import { createReceivingSlice } from './slices/receivingSlice.js'
  * - Cart & Catalog (`cartSlice`)
  * - Payment & Settlement (`paymentSlice`)
  * - Receiving & Put-Away (`receivingSlice`)
+ * - Stock Tree & Expiry Board (`inventorySlice`)
  */
 export const useCounterStore = create((...a) => ({
   ...createTicketSlice(...a),
   ...createCartSlice(...a),
   ...createPaymentSlice(...a),
   ...createReceivingSlice(...a),
+  ...createInventorySlice(...a),
 }))
